@@ -1,4 +1,4 @@
-# `vikejs/servers`
+# `vikejs/vike-server-adapters`
 
 Server adapters integrating [Vike](https://vike.dev) with various server frameworks.
 
