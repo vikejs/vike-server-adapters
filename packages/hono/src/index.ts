@@ -5,9 +5,6 @@ export * from "@universal-middleware/hono";
 
 type EnhancedMiddlewareHono = Parameters<typeof apply>[1][number];
 
-/**
- * Attach Vike middleware to a Hono app
- */
 export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = []) {
   return apply(app, [...middlewares, vikeMiddleware]);
 }
