@@ -28,11 +28,15 @@ describe("toFetchHandler", () => {
       res.json(req.body);
     });
 
+    const payload = JSON.stringify({ hello: "world" });
     const response = await toFetchHandler(app)(
       new Request("http://localhost/echo", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ hello: "world" }),
+        headers: {
+          "content-type": "application/json",
+          "content-length": String(Buffer.byteLength(payload)),
+        },
+        body: payload,
       }),
     );
     expect(response?.status).toBe(200);
