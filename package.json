@@ -12,14 +12,16 @@
     "typecheck": "pnpm -r run typecheck",
     "changeset": "changeset",
     "changeset:version": "changeset version",
-    "changeset:release": "changeset publish"
+    "changeset:release": "changeset publish",
+    "test": "pnpm -r run test"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.9",
     "@changesets/cli": "^2.31.0",
     "@types/node": "^20.19.43",
     "tsdown": "^0.21.10",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.0.0"
   },
   "engines": {
     "node": ">=20.0.0"
