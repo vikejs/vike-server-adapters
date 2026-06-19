@@ -55,8 +55,8 @@ importers:
   packages/express:
     dependencies:
       '@universal-middleware/express':
-        specifier: ^0.4.29
-        version: 0.4.29(@hattip/core@0.0.49)(@types/express@5.0.6)(elysia@1.4.29(@sinclair/typebox@0.34.49)(exact-mirror@1.2.2)(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))(fastify@5.8.5)(h3@1.15.11)(hono@4.12.26)(srvx@0.11.17)
+        specifier: ^0.4.30
+        version: 0.4.30(@hattip/core@0.0.49)(@types/express@5.0.6)(elysia@1.4.29(@sinclair/typebox@0.34.49)(exact-mirror@1.2.2)(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))(fastify@5.8.5)(h3@1.15.11)(hono@4.12.26)(srvx@0.11.17)
     devDependencies:
       '@types/express':
         specifier: ^5.0.6
@@ -1019,8 +1019,8 @@ packages:
   '@universal-middleware/elysia@0.6.5':
     resolution: {integrity: sha512-0pGMzjpClYUZ5rqCACM4Rf5aOQ0G+xYPHoG2XYLLFsLU2rodGB4/U6K/mdA1c1fVePjwNIOZPPmgc/EdHDVtmQ==}
 
-  '@universal-middleware/express@0.4.29':
-    resolution: {integrity: sha512-HsAZcC5AdToLd/LZ1tOPPBA1lSMax0ofIym5TamyUuH3EZSg898JYjZlAXGMrNwn0ufHgbRAGYMwyJJjgiZ+pA==}
+  '@universal-middleware/express@0.4.30':
+    resolution: {integrity: sha512-vkaqurRbPFMYSACaG+iWpDbFlvbV/GTQ0wHx8Aqg9I7f5HxFHoos4F7E/oUIa352FXcJPflQM0CJXgkHTW+QeQ==}
 
   '@universal-middleware/fastify@0.5.26':
     resolution: {integrity: sha512-DUImESs9taUeMOSvJcSB/gvK0M90wQXXwRNP5Rhjto5GTXiHair2yRjxhhjVqXAms63G/du5xrzoOIO1JBB3NQ==}
@@ -3077,7 +3077,7 @@ snapshots:
       '@universal-deploy/netlify': 0.2.2(srvx@0.11.17)(vite@8.0.16(@types/node@20.19.43)(esbuild@0.28.1))
       '@universal-deploy/node': 0.1.7(vite@8.0.16(@types/node@20.19.43)(esbuild@0.28.1))
       '@universal-deploy/store': 0.2.1(srvx@0.11.17)
-      '@universal-middleware/express': 0.4.29(@hattip/core@0.0.49)(@types/express@5.0.6)(elysia@1.4.29(@sinclair/typebox@0.34.49)(exact-mirror@1.2.2)(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))(fastify@5.8.5)(h3@1.15.11)(hono@4.12.26)(srvx@0.11.17)
+      '@universal-middleware/express': 0.4.30(@hattip/core@0.0.49)(@types/express@5.0.6)(elysia@1.4.29(@sinclair/typebox@0.34.49)(exact-mirror@1.2.2)(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))(fastify@5.8.5)(h3@1.15.11)(hono@4.12.26)(srvx@0.11.17)
       magic-string: 0.30.21
       rou3: 0.8.1
     optionalDependencies:
@@ -3120,7 +3120,7 @@ snapshots:
       - hono
       - srvx
 
-  '@universal-middleware/express@0.4.29(@hattip/core@0.0.49)(@types/express@5.0.6)(elysia@1.4.29(@sinclair/typebox@0.34.49)(exact-mirror@1.2.2)(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))(fastify@5.8.5)(h3@1.15.11)(hono@4.12.26)(srvx@0.11.17)':
+  '@universal-middleware/express@0.4.30(@hattip/core@0.0.49)(@types/express@5.0.6)(elysia@1.4.29(@sinclair/typebox@0.34.49)(exact-mirror@1.2.2)(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))(fastify@5.8.5)(h3@1.15.11)(hono@4.12.26)(srvx@0.11.17)':
     dependencies:
       '@universal-middleware/core': 0.4.18(@hattip/core@0.0.49)(@types/express@5.0.6)(elysia@1.4.29(@sinclair/typebox@0.34.49)(exact-mirror@1.2.2)(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))(fastify@5.8.5)(h3@1.15.11)(hono@4.12.26)(srvx@0.11.17)
       '@universal-middleware/node': 0.2.1(@hattip/core@0.0.49)(@types/express@5.0.6)(elysia@1.4.29(@sinclair/typebox@0.34.49)(exact-mirror@1.2.2)(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))(fastify@5.8.5)(h3@1.15.11)(hono@4.12.26)(srvx@0.11.17)
