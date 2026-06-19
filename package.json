@@ -16,7 +16,7 @@
     "test": "pnpm -r run test"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.9",
+    "@biomejs/biome": "^2.5.0",
     "@changesets/cli": "^2.31.0",
     "@types/node": "^20.19.43",
     "tsdown": "^0.21.10",
@@ -26,5 +26,5 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "packageManager": "pnpm@10.34.4"
+  "packageManager": "pnpm@11.8.0"
 }
