@@ -1,5 +1,11 @@
 # @vikejs/hattip
 
+## 0.2.1
+
+### Patch Changes
+
+- 3fd0147: fix: bump dependencies
+
 ## 0.2.0
 
 ### Minor Changes

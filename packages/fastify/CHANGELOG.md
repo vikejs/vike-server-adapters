@@ -1,5 +1,11 @@
 # @vikejs/fastify
 
+## 0.2.5
+
+### Patch Changes
+
+- 3fd0147: fix: bump dependencies
+
 ## 0.2.3
 
 ### Patch Changes

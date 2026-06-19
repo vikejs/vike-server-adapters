@@ -1,6 +1,6 @@
 {
   "name": "@vikejs/express",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "description": "Express server adapter for Vike",
   "files": [

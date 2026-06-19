@@ -1,6 +1,6 @@
 {
   "name": "@vikejs/fastify",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "type": "module",
   "description": "Fastify server adapter for Vike",
   "files": [

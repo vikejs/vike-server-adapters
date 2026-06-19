@@ -1,5 +1,12 @@
 # @vikejs/express
 
+## 0.2.3
+
+### Patch Changes
+
+- 3fd0147: fix: bump dependencies
+- 3fd0147: fix: propagate cancel event
+
 ## 0.2.2
 
 ### Patch Changes
