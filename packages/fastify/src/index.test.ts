@@ -4,16 +4,16 @@ vi.mock("vike/universal-middleware", () => ({ default: () => {} }));
 
 import vike, { apply, toFetchHandler } from "./index.js";
 
-describe("@vikejs/fastify exports", () => {
+describe("@vikejs/fastify", () => {
   it("vike is a function", () => {
-    expect(typeof vike).toBe("function");
+    expect(vike).toBeTypeOf("function");
   });
 
   it("apply is a function", () => {
-    expect(typeof apply).toBe("function");
+    expect(apply).toBeTypeOf("function");
   });
 
   it("toFetchHandler is a function", () => {
-    expect(typeof toFetchHandler).toBe("function");
+    expect(toFetchHandler).toBeTypeOf("function");
   });
 });

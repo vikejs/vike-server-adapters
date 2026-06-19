@@ -6,9 +6,6 @@ export { toFetchHandler } from "srvx/node";
 
 type EnhancedMiddlewareFastify = Parameters<typeof apply>[1][number];
 
-/**
- * Attach Vike middleware to a Fastify app
- */
 export default function vike(app: App, middlewares: EnhancedMiddlewareFastify[] = []) {
   return apply(app, [...middlewares, vikeMiddleware]);
 }

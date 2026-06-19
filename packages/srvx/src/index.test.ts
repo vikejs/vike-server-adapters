@@ -4,12 +4,12 @@ vi.mock("vike/universal-middleware", () => ({ default: () => {} }));
 
 import vike, { apply } from "./index.js";
 
-describe("@vikejs/srvx exports", () => {
+describe("@vikejs/srvx", () => {
   it("vike is a function", () => {
-    expect(typeof vike).toBe("function");
+    expect(vike).toBeTypeOf("function");
   });
 
   it("apply is a function", () => {
-    expect(typeof apply).toBe("function");
+    expect(apply).toBeTypeOf("function");
   });
 });
