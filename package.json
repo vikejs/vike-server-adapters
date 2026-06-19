@@ -11,8 +11,7 @@
     "check": "biome check --write .",
     "typecheck": "pnpm -r run typecheck",
     "changeset": "changeset",
-    "changeset:version": "changeset version",
-    "changeset:release": "changeset publish",
+    "release": "pnpm -r run build && changeset version && pnpm i && pnpm publish -r",
     "test": "pnpm -r run test"
   },
   "devDependencies": {
