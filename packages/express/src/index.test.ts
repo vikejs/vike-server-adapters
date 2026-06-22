@@ -3,11 +3,15 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("vike/universal-middleware", () => ({ default: () => {} }));
 
-import { connectToWeb, toFetchHandler } from "./index.js";
+import { toFetchHandler } from "./index.js";
 
 describe("toFetchHandler", () => {
-  it("is connectToWeb", () => {
-    expect(toFetchHandler).toBe(connectToWeb);
+  it("falls back to 404 when the app doesn't handle the request", async () => {
+    const app = express();
+
+    const response = await toFetchHandler(app)(new Request("http://localhost/missing"));
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(404);
   });
 
   it("handles GET request", async () => {
