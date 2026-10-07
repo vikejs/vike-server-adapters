@@ -1,14 +1,17 @@
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 
+// A test sets `beforeContextSet` to hold every request's +middleware until all of them have arrived
+const hooks = vi.hoisted(() => ({ beforeContextSet: undefined as undefined | (() => Promise<void>) }));
+
 vi.mock("vike", async () => {
   const { enhance } = await import("@universal-middleware/core");
   return {
-    // Stands for the user's +middleware: it puts the `x-user` header in the context, after `x-delay` milliseconds
+    // Stands for the user's +middleware: it puts the `x-user` header in the context, after `hooks.beforeContextSet`
     getUniversalMiddlewares: () => [
       enhance(
         async (request: Request, context: Universal.Context) => {
-          await new Promise((resolve) => setTimeout(resolve, Number(request.headers.get("x-delay") ?? 0)));
+          await hooks.beforeContextSet?.();
           return { ...context, user: request.headers.get("x-user") };
         },
         { name: "stub:middleware" },
@@ -52,21 +55,6 @@ describe("@vikejs/fastify", () => {
     expect(response.json()).toEqual({ user: "alice" });
   });
 
-  it("keeps the context of concurrent requests apart", async () => {
-    const app = Fastify();
-    await vike(app);
-    app.get("/api/me", async (request) => {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      return user(request);
-    });
-
-    const [slow, fast] = await Promise.all([
-      app.inject({ url: "/api/me", headers: { "x-user": "slow", "x-delay": "30" } }),
-      app.inject({ url: "/api/me", headers: { "x-user": "fast" } }),
-    ]);
-    expect([slow.body, fast.body]).toEqual(["slow", "fast"]);
-  });
-
   it("renders a page after the app's routes", async () => {
     const app = Fastify();
     await vike(app);
@@ -92,8 +80,8 @@ describe("@vikejs/fastify", () => {
     expect(response.body).not.toContain("page");
   });
 
-  // These need a Universal Middleware release with #383 (JSON body) and #384 (HEAD, redirect, 204): they fail against
-  // the published one. Run them against a build of both with `UNIVERSAL_MIDDLEWARE_FIXED=1 pnpm test`; until the
+  // These need a Universal Middleware release with #382 (context per request), #383 (JSON body) and #384 (HEAD,
+  // redirect, 204): they fail against the published one. Run them against a build of both with `UNIVERSAL_MIDDLEWARE_FIXED=1 pnpm test`; until the
   // dependency is bumped they are skipped.
   const needsFixedUniversalMiddleware = it.skipIf(!process.env.UNIVERSAL_MIDDLEWARE_FIXED);
 
@@ -123,6 +111,40 @@ describe("@vikejs/fastify", () => {
     const redirect = await app.inject({ url: "/old" });
     expect([redirect.statusCode, redirect.headers.location]).toEqual([302, "/new"]);
     expect((await app.inject({ url: "/empty" })).statusCode).toBe(204);
+  });
+
+  // A request reads the context after an await, while the other request's +middleware has already set its own. The
+  // barriers make the two requests interleave every time, so the test fails if the context is shared between requests
+  // (the released Universal Middleware keeps it on the route's config) and needs a release with #382.
+  needsFixedUniversalMiddleware("keeps the context of concurrent requests apart", async () => {
+    const meet = (count: number) => {
+      let arrived = 0;
+      let release: () => void;
+      const met = new Promise<void>((resolve) => (release = resolve));
+      return () => {
+        if (++arrived === count) release();
+        return met;
+      };
+    };
+    const middlewaresDone = meet(2);
+    const routesStarted = meet(2);
+    hooks.beforeContextSet = middlewaresDone;
+    try {
+      const app = Fastify();
+      await vike(app);
+      app.get("/api/me", async (request) => {
+        await routesStarted();
+        return user(request);
+      });
+
+      const [alice, bob] = await Promise.all([
+        app.inject({ url: "/api/me", headers: { "x-user": "alice" } }),
+        app.inject({ url: "/api/me", headers: { "x-user": "bob" } }),
+      ]);
+      expect([alice.body, bob.body]).toEqual(["alice", "bob"]);
+    } finally {
+      hooks.beforeContextSet = undefined;
+    }
   });
 
   it("throws when vike(app) is called twice on the same app", async () => {

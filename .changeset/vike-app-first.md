@@ -15,7 +15,8 @@ feat: `vike(app)` runs every `+middleware` on every request, before the app's ow
 - Express and H3: the pages are appended when the first request arrives; a route registered after the first request sits behind the pages.
 - Hono: the pages are `app.notFound()`; the adapter throws at the first request if `app.notFound()` was called after `vike(app)`.
 - Express and Hono: `vike(app)` throws if a route was registered before it (the `+middleware` would not run for it).
-- Fastify: a JSON `POST` to a route after `vike(app)` needs a Universal Middleware release containing universal-middleware#383, and `HEAD` requests, redirects and `204` answers need one containing #384; without them these answer 500.
+- Fastify: a route that reads `getContext()` after an `await` needs a Universal Middleware release containing universal-middleware#382; without it the route can see the context of another request. A JSON `POST` to a route after `vike(app)` needs a Universal Middleware release containing universal-middleware#383, and `HEAD` requests, redirects and `204` answers need one containing #384; without them these answer 500.
+- A `+middleware` with a `path` needs a Universal Middleware release containing universal-middleware#385: without it a request that spells the path percent-encoded (`/%64ash` for `/dash`) skips the `+middleware`, so a guard on that path does not run.
 - Express: a body parser registered before `vike(app)`, such as `app.use(express.json())`, needs a Universal Middleware release containing universal-middleware#383; without it requests whose body the parser consumed answer 500.
 - Elysia: a JSON body sent to a route after `vike(app)` needs a Universal Middleware release containing universal-middleware#383; without it the route gets an empty body.
 - Calling `vike(app)` twice on the same app throws.
