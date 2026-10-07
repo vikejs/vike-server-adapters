@@ -21,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@universal-middleware/hono": "^0.4.21"
+    "@universal-middleware/hono": "^0.5.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",

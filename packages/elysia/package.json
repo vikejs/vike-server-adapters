@@ -21,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@universal-middleware/elysia": "^0.6.5"
+    "@universal-middleware/elysia": "^0.7.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",

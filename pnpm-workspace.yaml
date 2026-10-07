@@ -3,5 +3,4 @@ packages:
 allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:
-  - '@universal-middleware/express@0.4.30'
-  - srvx@0.11.17
+  - '@universal-middleware/*'
