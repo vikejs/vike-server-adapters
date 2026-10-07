@@ -36,8 +36,8 @@ describe("@vikejs/srvx", () => {
   });
 
   // srvx has no app: the routes in `middlewares` are the app's routes
-  const get = (fetch: ReturnType<typeof vike>, path: string, headers: Record<string, string> = {}) =>
-    fetch(new Request(`http://localhost${path}`, { headers }) as never);
+  const send = (fetch: ReturnType<typeof vike>, path: string, init?: RequestInit) =>
+    fetch(new Request(`http://localhost${path}`, init) as never);
   const apiRoute = async (_request: Request, context: Universal.Context) => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     return new Response((context as { user: string }).user);
@@ -46,7 +46,7 @@ describe("@vikejs/srvx", () => {
   it("runs the +middleware before a route in middlewares, and the route sees the context", async () => {
     const fetch = vike([enhance(apiRoute, { name: "api", method: "GET", path: "/api/me" })]);
 
-    const response = await get(fetch, "/api/me", { "x-user": "alice" });
+    const response = await send(fetch, "/api/me", { headers: { "x-user": "alice" } });
     expect(await response.text()).toBe("alice");
   });
 
@@ -54,8 +54,8 @@ describe("@vikejs/srvx", () => {
     const fetch = vike([enhance(apiRoute, { name: "api", method: "GET", path: "/api/me" })]);
 
     const [slow, fast] = await Promise.all([
-      get(fetch, "/api/me", { "x-user": "slow", "x-delay": "30" }),
-      get(fetch, "/api/me", { "x-user": "fast" }),
+      send(fetch, "/api/me", { headers: { "x-user": "slow", "x-delay": "30" } }),
+      send(fetch, "/api/me", { headers: { "x-user": "fast" } }),
     ]);
     expect([await slow.text(), await fast.text()]).toEqual(["slow", "fast"]);
   });
@@ -69,13 +69,11 @@ describe("@vikejs/srvx", () => {
       }),
     ]);
 
-    const response = await fetch(
-      new Request("http://localhost/api/echo", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ a: 1 }),
-      }) as never,
-    );
+    const response = await send(fetch, "/api/echo", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ a: 1 }),
+    });
     expect(await response.json()).toEqual({ a: 1 });
   });
 
@@ -83,22 +81,22 @@ describe("@vikejs/srvx", () => {
     // A route declared for GET does not match HEAD, so the route declares both
     const fetch = vike([enhance(() => new Response("api"), { name: "api", method: ["GET", "HEAD"], path: "/api/me" })]);
 
-    const response = await fetch(new Request("http://localhost/api/me", { method: "HEAD" }) as never);
+    const response = await send(fetch, "/api/me", { method: "HEAD" });
     expect(response.status).toBe(200);
   });
 
   it("renders a page where no route matches", async () => {
-    expect(await (await get(vike(), "/about")).text()).toBe("page /about");
+    expect(await (await send(vike(), "/about")).text()).toBe("page /about");
   });
 
   it("answers 404 instead of throwing for a method Vike's handler does not declare", async () => {
-    const response = await vike()(new Request("http://localhost/about", { method: "DELETE" }) as never);
+    const response = await send(vike(), "/about", { method: "DELETE" });
     expect(response.status).toBe(404);
   });
 
   it("answers with the route in middlewares when a page has the same path", async () => {
     const fetch = vike([enhance(() => new Response("app"), { name: "about", method: "GET", path: "/about" })]);
 
-    expect(await (await get(fetch, "/about")).text()).toBe("app");
+    expect(await (await send(fetch, "/about")).text()).toBe("app");
   });
 });

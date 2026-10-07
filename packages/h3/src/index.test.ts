@@ -35,8 +35,8 @@ describe("@vikejs/h3", () => {
     expect(apply).toBeTypeOf("function");
   });
 
-  const get = (app: ReturnType<typeof createApp>, path: string, headers: Record<string, string> = {}) =>
-    toWebHandler(app)(new Request(`http://localhost${path}`, { headers }));
+  const send = (app: ReturnType<typeof createApp>, path: string, init?: RequestInit) =>
+    toWebHandler(app)(new Request(`http://localhost${path}`, init));
   const routerApp = (app: ReturnType<typeof createApp>) => {
     const router = createRouter();
     app.use(router);
@@ -51,7 +51,7 @@ describe("@vikejs/h3", () => {
       eventHandler((event) => ({ user: (getContext(event) as { user: string }).user })),
     );
 
-    const response = await get(app, "/api/me", { "x-user": "alice" });
+    const response = await send(app, "/api/me", { headers: { "x-user": "alice" } });
     expect(await response.json()).toEqual({ user: "alice" });
   });
 
@@ -67,8 +67,8 @@ describe("@vikejs/h3", () => {
     );
 
     const [slow, fast] = await Promise.all([
-      get(app, "/api/me", { "x-user": "slow", "x-delay": "30" }),
-      get(app, "/api/me", { "x-user": "fast" }),
+      send(app, "/api/me", { headers: { "x-user": "slow", "x-delay": "30" } }),
+      send(app, "/api/me", { headers: { "x-user": "fast" } }),
     ]);
     expect([await slow.text(), await fast.text()]).toEqual(["slow", "fast"]);
   });
@@ -81,7 +81,7 @@ describe("@vikejs/h3", () => {
       eventHandler(() => "api"),
     );
 
-    expect(await (await get(app, "/about")).text()).toBe("page /about");
+    expect(await (await send(app, "/about")).text()).toBe("page /about");
   });
 
   it("answers with the app's route when a page has the same path", async () => {
@@ -92,7 +92,7 @@ describe("@vikejs/h3", () => {
       eventHandler(() => "app"),
     );
 
-    expect(await (await get(app, "/about")).text()).toBe("app");
+    expect(await (await send(app, "/about")).text()).toBe("app");
   });
 
   it("hands a JSON body to a route registered after vike(app)", async () => {
@@ -103,13 +103,11 @@ describe("@vikejs/h3", () => {
       eventHandler((event) => readBody(event)),
     );
 
-    const response = await toWebHandler(app)(
-      new Request("http://localhost/api/echo", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ a: 1 }),
-      }),
-    );
+    const response = await send(app, "/api/echo", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ a: 1 }),
+    });
     expect(await response.json()).toEqual({ a: 1 });
   });
 
@@ -122,7 +120,7 @@ describe("@vikejs/h3", () => {
       eventHandler(() => "api"),
     );
 
-    const response = await toWebHandler(app)(new Request("http://localhost/api/me", { method: "HEAD" }));
+    const response = await send(app, "/api/me", { method: "HEAD" });
     expect(response.status).toBe(200);
   });
 
@@ -131,9 +129,9 @@ describe("@vikejs/h3", () => {
     vike(app);
     const layers = app.stack.length;
 
-    await get(app, "/about");
+    await send(app, "/about");
     expect(app.stack.length).toBe(layers + 1);
-    await get(app, "/about");
+    await send(app, "/about");
     expect(app.stack.length).toBe(layers + 1);
   });
 
@@ -141,7 +139,7 @@ describe("@vikejs/h3", () => {
     const app = createApp();
     vike(app);
 
-    const response = await toWebHandler(app)(new Request("http://localhost/about", { method: "DELETE" }));
+    const response = await send(app, "/about", { method: "DELETE" });
     expect(response.status).toBe(404);
     expect(await response.text()).not.toContain("page");
   });
@@ -151,8 +149,8 @@ describe("@vikejs/h3", () => {
     const app = createApp({ onRequest });
     vike(app);
 
-    await get(app, "/about");
-    await get(app, "/about");
+    await send(app, "/about");
+    await send(app, "/about");
     expect(onRequest).toHaveBeenCalledTimes(2);
   });
 

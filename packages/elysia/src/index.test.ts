@@ -36,8 +36,8 @@ describe("@vikejs/elysia", () => {
     expect(apply).toBeTypeOf("function");
   });
 
-  const get = (app: Elysia, path: string, headers: Record<string, string> = {}) =>
-    app.handle(new Request(`http://localhost${path}`, { headers }));
+  const send = (app: Elysia, path: string, init?: RequestInit) =>
+    app.handle(new Request(`http://localhost${path}`, init));
 
   it("runs the +middleware before a route registered after vike(app), and the route sees the context", async () => {
     const app = new Elysia();
@@ -45,7 +45,7 @@ describe("@vikejs/elysia", () => {
     // @ts-expect-error getContext() is derived by the +middleware's plugin
     app.get("/api/me", ({ getContext }) => ({ user: getContext().user }));
 
-    const response = await get(app, "/api/me", { "x-user": "alice" });
+    const response = await send(app, "/api/me", { headers: { "x-user": "alice" } });
     expect(await response.json()).toEqual({ user: "alice" });
   });
 
@@ -59,8 +59,8 @@ describe("@vikejs/elysia", () => {
     });
 
     const [slow, fast] = await Promise.all([
-      get(app, "/api/me", { "x-user": "slow", "x-delay": "30" }),
-      get(app, "/api/me", { "x-user": "fast" }),
+      send(app, "/api/me", { headers: { "x-user": "slow", "x-delay": "30" } }),
+      send(app, "/api/me", { headers: { "x-user": "fast" } }),
     ]);
     expect([await slow.text(), await fast.text()]).toEqual(["slow", "fast"]);
   });
@@ -70,7 +70,7 @@ describe("@vikejs/elysia", () => {
     vike(app);
     app.get("/api/me", () => "api");
 
-    expect(await (await get(app, "/about")).text()).toBe("page /about");
+    expect(await (await send(app, "/about")).text()).toBe("page /about");
   });
 
   it("answers with the app's route when a page has the same path", async () => {
@@ -78,7 +78,7 @@ describe("@vikejs/elysia", () => {
     vike(app);
     app.get("/about", () => "app");
 
-    expect(await (await get(app, "/about")).text()).toBe("app");
+    expect(await (await send(app, "/about")).text()).toBe("app");
   });
 
   // Needs a Universal Middleware release with #383: over real HTTP the route gets an empty body without it (an
@@ -111,7 +111,7 @@ describe("@vikejs/elysia", () => {
     vike(app);
     app.get("/api/me", () => "api");
 
-    const response = await app.handle(new Request("http://localhost/api/me", { method: "HEAD" }));
+    const response = await send(app, "/api/me", { method: "HEAD" });
     expect(response.status).toBe(200);
   });
 

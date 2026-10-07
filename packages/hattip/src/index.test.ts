@@ -35,10 +35,14 @@ describe("@vikejs/hattip", () => {
     expect(apply).toBeTypeOf("function");
   });
 
-  const get = (router: ReturnType<typeof createRouter>, path: string, headers: Record<string, string> = {}) => {
-    const request = new Request(`http://localhost${path}`, { headers });
+  const send = (
+    handler: ReturnType<ReturnType<typeof createRouter>["buildHandler"]>,
+    path: string,
+    init?: RequestInit,
+  ) => {
+    const request = new Request(`http://localhost${path}`, init);
     // biome-ignore lint/suspicious/noExplicitAny: a minimal HatTip context
-    return router.buildHandler()({ request, url: new URL(request.url), method: request.method } as any);
+    return handler({ request, url: new URL(request.url), method: request.method } as any);
   };
   const user = (context: unknown) => (getContext(context as Parameters<typeof getContext>[0]) as { user: string }).user;
 
@@ -47,7 +51,7 @@ describe("@vikejs/hattip", () => {
     vike(router);
     router.get("/api/me", (context) => Response.json({ user: user(context) }));
 
-    const response = await get(router, "/api/me", { "x-user": "alice" });
+    const response = await send(router.buildHandler(), "/api/me", { headers: { "x-user": "alice" } });
     expect(await response?.json()).toEqual({ user: "alice" });
   });
 
@@ -60,12 +64,10 @@ describe("@vikejs/hattip", () => {
     });
 
     const handler = router.buildHandler();
-    const call = (headers: Record<string, string>) => {
-      const request = new Request("http://localhost/api/me", { headers });
-      // biome-ignore lint/suspicious/noExplicitAny: a minimal HatTip context
-      return handler({ request, url: new URL(request.url), method: "GET" } as any);
-    };
-    const [slow, fast] = await Promise.all([call({ "x-user": "slow", "x-delay": "30" }), call({ "x-user": "fast" })]);
+    const [slow, fast] = await Promise.all([
+      send(handler, "/api/me", { headers: { "x-user": "slow", "x-delay": "30" } }),
+      send(handler, "/api/me", { headers: { "x-user": "fast" } }),
+    ]);
     expect([await slow?.text(), await fast?.text()]).toEqual(["slow", "fast"]);
   });
 
@@ -74,7 +76,7 @@ describe("@vikejs/hattip", () => {
     vike(router);
     router.get("/api/me", () => new Response("api"));
 
-    expect(await (await get(router, "/about"))?.text()).toBe("page /about");
+    expect(await (await send(router.buildHandler(), "/about"))?.text()).toBe("page /about");
   });
 
   it("answers with the app's route when a page has the same path", async () => {
@@ -82,7 +84,7 @@ describe("@vikejs/hattip", () => {
     vike(router);
     router.get("/about", () => new Response("app"));
 
-    expect(await (await get(router, "/about"))?.text()).toBe("app");
+    expect(await (await send(router.buildHandler(), "/about"))?.text()).toBe("app");
   });
 
   it("hands a JSON body to a route registered after vike(app)", async () => {
@@ -90,13 +92,11 @@ describe("@vikejs/hattip", () => {
     vike(router);
     router.post("/api/echo", async (context) => Response.json(await context.request.json()));
 
-    const request = new Request("http://localhost/api/echo", {
+    const response = await send(router.buildHandler(), "/api/echo", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ a: 1 }),
     });
-    // biome-ignore lint/suspicious/noExplicitAny: a minimal HatTip context
-    const response = await router.buildHandler()({ request, url: new URL(request.url), method: "POST" } as any);
     expect(await response?.json()).toEqual({ a: 1 });
   });
 
@@ -106,9 +106,7 @@ describe("@vikejs/hattip", () => {
     // HatTip's router doesn't match HEAD to a `get` route, so the route answers every method
     router.use("/api/me", () => new Response("api"));
 
-    const request = new Request("http://localhost/api/me", { method: "HEAD" });
-    // biome-ignore lint/suspicious/noExplicitAny: a minimal HatTip context
-    const response = await router.buildHandler()({ request, url: new URL(request.url), method: "HEAD" } as any);
+    const response = await send(router.buildHandler(), "/api/me", { method: "HEAD" });
     expect(response?.status).toBe(200);
   });
 

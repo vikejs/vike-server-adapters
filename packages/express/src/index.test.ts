@@ -74,8 +74,8 @@ describe("toFetchHandler", () => {
 
 describe("vike(app)", () => {
   const user = (req: express.Request) => (getContext(req as Parameters<typeof getContext>[0]) as { user: string }).user;
-  const get = (app: express.Express, path: string, headers: Record<string, string> = {}) =>
-    toFetchHandler(app)(new Request(`http://localhost${path}`, { headers }));
+  const send = (app: express.Express, path: string, init?: RequestInit) =>
+    toFetchHandler(app)(new Request(`http://localhost${path}`, init));
 
   it("runs the +middleware before a route registered after vike(app), and the route sees the context", async () => {
     const app = express();
@@ -84,7 +84,7 @@ describe("vike(app)", () => {
       res.json({ user: user(req) });
     });
 
-    const response = await get(app, "/api/me", { "x-user": "alice" });
+    const response = await send(app, "/api/me", { headers: { "x-user": "alice" } });
     expect(await response.json()).toEqual({ user: "alice" });
   });
 
@@ -97,8 +97,8 @@ describe("vike(app)", () => {
     });
 
     const [slow, fast] = await Promise.all([
-      get(app, "/api/me", { "x-user": "slow", "x-delay": "30" }),
-      get(app, "/api/me", { "x-user": "fast" }),
+      send(app, "/api/me", { headers: { "x-user": "slow", "x-delay": "30" } }),
+      send(app, "/api/me", { headers: { "x-user": "fast" } }),
     ]);
     expect([await slow.text(), await fast.text()]).toEqual(["slow", "fast"]);
   });
@@ -110,7 +110,7 @@ describe("vike(app)", () => {
       res.send("api");
     });
 
-    expect(await (await get(app, "/about")).text()).toBe("page /about");
+    expect(await (await send(app, "/about")).text()).toBe("page /about");
   });
 
   it("answers with the app's route when a page has the same path", async () => {
@@ -120,7 +120,7 @@ describe("vike(app)", () => {
       res.send("app");
     });
 
-    expect(await (await get(app, "/about")).text()).toBe("app");
+    expect(await (await send(app, "/about")).text()).toBe("app");
   });
 
   it("hands a JSON body to a route registered after vike(app)", async () => {
@@ -130,13 +130,11 @@ describe("vike(app)", () => {
       res.json(req.body);
     });
 
-    const response = await toFetchHandler(app)(
-      new Request("http://localhost/api/echo", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ a: 1 }),
-      }),
-    );
+    const response = await send(app, "/api/echo", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ a: 1 }),
+    });
     expect(await response.json()).toEqual({ a: 1 });
   });
 
@@ -176,7 +174,7 @@ describe("vike(app)", () => {
       res.send("api");
     });
 
-    const response = await toFetchHandler(app)(new Request("http://localhost/api/me", { method: "HEAD" }));
+    const response = await send(app, "/api/me", { method: "HEAD" });
     expect(response.status).toBe(200);
   });
 
@@ -184,7 +182,7 @@ describe("vike(app)", () => {
     const app = express();
     vike(app);
 
-    const response = await toFetchHandler(app)(new Request("http://localhost/about", { method: "DELETE" }));
+    const response = await send(app, "/about", { method: "DELETE" });
     expect(response.status).toBe(404);
     expect(await response.text()).not.toContain("page");
   });
@@ -205,7 +203,7 @@ describe("vike(app)", () => {
       res.send(order.join());
     });
 
-    expect(await (await get(app, "/")).text()).toBe("extra");
+    expect(await (await send(app, "/")).text()).toBe("extra");
   });
 
   describe("a route registered before vike(app)", () => {
