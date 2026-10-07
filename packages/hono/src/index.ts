@@ -16,8 +16,12 @@ function isWildcard(path: string) {
   return path.includes("*");
 }
 
+function isAppRoute({ method, path }: { method: string; path: string }) {
+  return method !== "ALL" && !isWildcard(path);
+}
+
 function assertNoRouteBefore(app: App) {
-  const route = app.routes.find(({ method, path }) => method !== "ALL" && method !== "OPTIONS" && !isWildcard(path));
+  const route = app.routes.find((route) => route.method !== "OPTIONS" && isAppRoute(route));
   if (route) {
     throw new Error(
       `[@vikejs/hono] Call vike(app) before registering the app's routes: ${route.method} ${route.path} was registered first, so the +middleware would not run for it. ` +
@@ -40,10 +44,7 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = [
   const pages = createHandler(() => universalHandler)();
   app.notFound(async (c) => {
     // A route that matched and answered with `c.notFound()` is answered by Hono, not by a page
-    if (
-      c.req.matchedRoutes.some(({ method, path }) => method !== "ALL" && !isWildcard(path)) ||
-      !pagesMethods.includes(c.req.method)
-    ) {
+    if (c.req.matchedRoutes.some(isAppRoute) || !pagesMethods.includes(c.req.method)) {
       return c.text("404 Not Found", 404);
     }
     return (await pages(c, async () => {})) as Response;
