@@ -56,18 +56,35 @@ function findRouteBefore(stack: Layer[]): { methods: string; path: string } | un
   }
 }
 
-function assertNoRouteBefore(app: App) {
+// Express 4 keeps the router in `_router`, created on first use; Express 5 in `router`
+function routerStack(app: App): Layer[] | undefined {
   const express4 = "del" in app;
   const router = express4
     ? (app as { _router?: { stack: Layer[] } })._router
     : (app as { router: { stack: Layer[] } }).router;
-  const route = router && findRouteBefore(router.stack);
+  return router?.stack;
+}
+
+function assertNoRouteBefore(app: App) {
+  const route = findRouteBefore(routerStack(app) ?? []);
   if (route) {
     throw new Error(
       `[@vikejs/express] Call vike(app) before registering the app's routes: ${route.methods} ${route.path} was registered first, so the +middleware would not run for it. ` +
         `To answer a route before the +middleware, install them yourself: apply(app, getUniversalMiddlewares()) and apply(app, [universalHandler]).`,
     );
   }
+}
+
+function appendPagesOnFirstRequest(app: App) {
+  const handle = app.handle;
+  app.handle = function (this: App, ...args: Parameters<App["handle"]>) {
+    app.handle = handle;
+    const pages = createHandler(() => universalHandler)();
+    app.use((req: ExpressRequest, res: ExpressResponse, next: NextFunction) =>
+      pagesMethods.includes(req.method) ? pages(req as Parameters<typeof pages>[0], res, next) : next(),
+    );
+    return handle.apply(this, args);
+  };
 }
 
 /**
@@ -82,15 +99,7 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareExpress[] 
   assertNoRouteBefore(app);
   installed.add(app);
 
-  const handle = app.handle;
-  app.handle = function (this: App, ...args: Parameters<App["handle"]>) {
-    app.handle = handle;
-    const pages = createHandler(() => universalHandler)();
-    app.use((req: ExpressRequest, res: ExpressResponse, next: NextFunction) =>
-      pagesMethods.includes(req.method) ? pages(req as Parameters<typeof pages>[0], res, next) : next(),
-    );
-    return handle.apply(this, args);
-  };
+  appendPagesOnFirstRequest(app);
 
   return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
 }
