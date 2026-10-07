@@ -1,3 +1,4 @@
+import { enhance } from "@universal-middleware/core";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -135,7 +136,6 @@ describe("@vikejs/hono", () => {
   });
 
   it("places the extra middlewares before the +middleware", async () => {
-    const { enhance } = await import("@universal-middleware/core");
     const order: string[] = [];
     const app = new Hono();
     vike(app, [

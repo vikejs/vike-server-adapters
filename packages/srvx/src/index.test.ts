@@ -1,3 +1,4 @@
+import { enhance } from "@universal-middleware/core";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("vike", async () => {
@@ -43,7 +44,6 @@ describe("@vikejs/srvx", () => {
   };
 
   it("runs the +middleware before a route in middlewares, and the route sees the context", async () => {
-    const { enhance } = await import("@universal-middleware/core");
     const fetch = vike([enhance(apiRoute, { name: "api", method: "GET", path: "/api/me" })]);
 
     const response = await get(fetch, "/api/me", { "x-user": "alice" });
@@ -51,7 +51,6 @@ describe("@vikejs/srvx", () => {
   });
 
   it("keeps the context of concurrent requests apart", async () => {
-    const { enhance } = await import("@universal-middleware/core");
     const fetch = vike([enhance(apiRoute, { name: "api", method: "GET", path: "/api/me" })]);
 
     const [slow, fast] = await Promise.all([
@@ -62,7 +61,6 @@ describe("@vikejs/srvx", () => {
   });
 
   it("hands a JSON body to a route in middlewares", async () => {
-    const { enhance } = await import("@universal-middleware/core");
     const fetch = vike([
       enhance(async (request: Request) => Response.json(await request.json()), {
         name: "echo",
@@ -82,7 +80,6 @@ describe("@vikejs/srvx", () => {
   });
 
   it("answers HEAD on a route in middlewares", async () => {
-    const { enhance } = await import("@universal-middleware/core");
     // A route declared for GET does not match HEAD, so the route declares both
     const fetch = vike([enhance(() => new Response("api"), { name: "api", method: ["GET", "HEAD"], path: "/api/me" })]);
 
@@ -100,7 +97,6 @@ describe("@vikejs/srvx", () => {
   });
 
   it("answers with the route in middlewares when a page has the same path", async () => {
-    const { enhance } = await import("@universal-middleware/core");
     const fetch = vike([enhance(() => new Response("app"), { name: "about", method: "GET", path: "/about" })]);
 
     expect(await (await get(fetch, "/about")).text()).toBe("app");

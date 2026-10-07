@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { enhance } from "@universal-middleware/core";
 import cors from "cors";
 import express from "express";
 import { describe, expect, it, vi } from "vitest";
@@ -189,7 +190,6 @@ describe("vike(app)", () => {
   });
 
   it("places the extra middlewares before the +middleware", async () => {
-    const { enhance } = await import("@universal-middleware/core");
     const order: string[] = [];
     const app = express();
     vike(app, [
