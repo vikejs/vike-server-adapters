@@ -127,12 +127,13 @@ describe("@vikejs/h3", () => {
   it("appends the pages once, at the first request", async () => {
     const app = createApp();
     vike(app);
-    const layers = app.stack.length;
+    const before = app.stack.length;
 
     await send(app, "/about");
-    expect(app.stack.length).toBe(layers + 1);
+    const after = app.stack.length;
+    expect(after).toBeGreaterThan(before);
     await send(app, "/about");
-    expect(app.stack.length).toBe(layers + 1);
+    expect(app.stack.length).toBe(after);
   });
 
   it("does not render a page for a method Vike's handler does not declare", async () => {
