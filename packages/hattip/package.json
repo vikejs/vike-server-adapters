@@ -21,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@universal-middleware/hattip": "^0.4.16"
+    "@universal-middleware/hattip": "^0.5.0"
   },
   "devDependencies": {
     "@hattip/core": "^0.0.49",
