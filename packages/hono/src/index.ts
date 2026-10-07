@@ -11,9 +11,21 @@ const pagesMethods: string[] = [getUniversalProp(universalHandler, methodSymbol)
 
 const installed = new WeakSet<App>();
 
-// `app.use()` registers `ALL`, so a `GET` or `POST` entry is a route the app wrote
-function isAppRoute({ method, path }: { method: string; path: string }) {
-  return method !== "ALL" && !path.includes("*");
+/**
+ * Install every `+middleware` right away, and Vike's pages and not-found page as `app.notFound()`, so that the routes
+ * the app registers after `vike(app)` keep their precedence over pages.
+ */
+export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = []) {
+  if (installed.has(app)) {
+    throw new Error("[@vikejs/hono] vike(app) was already called on this app: call it once.");
+  }
+  assertNoRouteBefore(app);
+  installed.add(app);
+
+  renderPagesOnNotFound(app);
+  assertNotFoundNotReplaced(app);
+
+  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
 }
 
 function assertNoRouteBefore(app: App) {
@@ -24,6 +36,11 @@ function assertNoRouteBefore(app: App) {
         `To answer a route before the +middleware, install them yourself: apply(app, getUniversalMiddlewares()) and apply(app, [universalHandler]).`,
     );
   }
+}
+
+// `app.use()` registers `ALL`, so a `GET` or `POST` entry is a route the app wrote
+function isAppRoute({ method, path }: { method: string; path: string }) {
+  return method !== "ALL" && !path.includes("*");
 }
 
 function renderPagesOnNotFound(app: App) {
@@ -55,21 +72,4 @@ function assertNotFoundNotReplaced(app: App) {
     }
     await next();
   });
-}
-
-/**
- * Install every `+middleware` right away, and Vike's pages and not-found page as `app.notFound()`, so that the routes
- * the app registers after `vike(app)` keep their precedence over pages.
- */
-export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = []) {
-  if (installed.has(app)) {
-    throw new Error("[@vikejs/hono] vike(app) was already called on this app: call it once.");
-  }
-  assertNoRouteBefore(app);
-  installed.add(app);
-
-  renderPagesOnNotFound(app);
-  assertNotFoundNotReplaced(app);
-
-  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
 }

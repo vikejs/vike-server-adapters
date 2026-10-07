@@ -31,8 +31,31 @@ const pagesMethods: string[] = [getUniversalProp(universalHandler, methodSymbol)
 
 const installed = new WeakSet<App>();
 
-function isWildcard(path: unknown) {
-  return typeof path === "string" && path.includes("*");
+/**
+ * Install every `+middleware` right away, and Vike's pages and not-found page when the first request arrives, so that the
+ * routes the app registers after `vike(app)` keep their precedence over pages. A route registered after the first request
+ * sits behind the pages.
+ */
+export default function vike(app: App, middlewares: EnhancedMiddlewareExpress[] = []) {
+  if (installed.has(app)) {
+    throw new Error("[@vikejs/express] vike(app) was already called on this app: call it once.");
+  }
+  assertNoRouteBefore(app);
+  installed.add(app);
+
+  appendPagesOnFirstRequest(app);
+
+  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
+}
+
+function assertNoRouteBefore(app: App) {
+  const route = findRouteBefore(routerStack(app) ?? []);
+  if (route) {
+    throw new Error(
+      `[@vikejs/express] Call vike(app) before registering the app's routes: ${route.methods} ${route.path} was registered first, so the +middleware would not run for it. ` +
+        `To answer a route before the +middleware, install them yourself: apply(app, getUniversalMiddlewares()) and apply(app, [universalHandler]).`,
+    );
+  }
 }
 
 // Only routes have `layer.route`, also inside mounted routers; `express.static` and `cors()` are middleware.
@@ -56,6 +79,10 @@ function findRouteBefore(stack: Layer[]): { methods: string; path: string } | un
   }
 }
 
+function isWildcard(path: unknown) {
+  return typeof path === "string" && path.includes("*");
+}
+
 // Express 4 keeps the router in `_router`, created on first use; Express 5 in `router`
 function routerStack(app: App): Layer[] | undefined {
   const express4 = "del" in app;
@@ -63,16 +90,6 @@ function routerStack(app: App): Layer[] | undefined {
     ? (app as { _router?: { stack: Layer[] } })._router
     : (app as { router: { stack: Layer[] } }).router;
   return router?.stack;
-}
-
-function assertNoRouteBefore(app: App) {
-  const route = findRouteBefore(routerStack(app) ?? []);
-  if (route) {
-    throw new Error(
-      `[@vikejs/express] Call vike(app) before registering the app's routes: ${route.methods} ${route.path} was registered first, so the +middleware would not run for it. ` +
-        `To answer a route before the +middleware, install them yourself: apply(app, getUniversalMiddlewares()) and apply(app, [universalHandler]).`,
-    );
-  }
 }
 
 function appendPagesOnFirstRequest(app: App) {
@@ -85,21 +102,4 @@ function appendPagesOnFirstRequest(app: App) {
     );
     return handle.apply(this, args);
   };
-}
-
-/**
- * Install every `+middleware` right away, and Vike's pages and not-found page when the first request arrives, so that the
- * routes the app registers after `vike(app)` keep their precedence over pages. A route registered after the first request
- * sits behind the pages.
- */
-export default function vike(app: App, middlewares: EnhancedMiddlewareExpress[] = []) {
-  if (installed.has(app)) {
-    throw new Error("[@vikejs/express] vike(app) was already called on this app: call it once.");
-  }
-  assertNoRouteBefore(app);
-  installed.add(app);
-
-  appendPagesOnFirstRequest(app);
-
-  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
 }
