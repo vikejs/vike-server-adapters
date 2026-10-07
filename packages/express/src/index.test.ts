@@ -1,3 +1,4 @@
+import { createServer } from "node:http";
 import cors from "cors";
 import express from "express";
 import { describe, expect, it, vi } from "vitest";
@@ -137,6 +138,35 @@ describe("vike(app)", () => {
     );
     expect(await response.json()).toEqual({ a: 1 });
   });
+
+  // Needs a Universal Middleware release with #383: over a real Node request the middleware builds its `Request` from a
+  // stream `express.json()` already consumed, and the app answers 500 without it (`toFetchHandler` hides that). Run it
+  // against a build with `UNIVERSAL_MIDDLEWARE_FIXED=1 pnpm test`; until the dependency is bumped it is skipped.
+  it.skipIf(!process.env.UNIVERSAL_MIDDLEWARE_FIXED)(
+    "hands a JSON body to a route when express.json() is registered before vike(app)",
+    async () => {
+      const app = express();
+      app.use(express.json());
+      vike(app);
+      app.post("/api/echo", (req, res) => {
+        res.json({ body: req.body });
+      });
+
+      const server = createServer(app).listen(0);
+      try {
+        await new Promise((resolve) => server.once("listening", resolve));
+        const { port } = server.address() as { port: number };
+        const response = await fetch(`http://localhost:${port}/api/echo`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ a: 1 }),
+        });
+        expect(await response.json()).toEqual({ body: { a: 1 } });
+      } finally {
+        server.close();
+      }
+    },
+  );
 
   it("answers HEAD on a route registered after vike(app)", async () => {
     const app = express();
