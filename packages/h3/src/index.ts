@@ -26,6 +26,7 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareH3[] = [])
   const onRequest = app.options.onRequest;
   app.options.onRequest = async (event) => {
     app.options.onRequest = onRequest;
+    // Not apply(app, [universalHandler]): it would set app.options.onBeforeResponse again, dropping one the app set after vike(app)
     const pages = createHandler(() => universalHandler)();
     app.use(eventHandler((event) => (pagesMethods.includes(event.method) ? pages(event) : undefined)));
     await onRequest?.(event);
