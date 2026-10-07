@@ -1,6 +1,6 @@
 {
   "name": "@vikejs/srvx",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "type": "module",
   "description": "srvx server adapter for Vike",
   "files": [

@@ -1,6 +1,6 @@
 {
   "name": "@vikejs/h3",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "description": "H3 server adapter for Vike",
   "files": [
