@@ -25,7 +25,7 @@ app.get('/api/me', (request) => getContext(request).user) // sees what a +middle
 await app.listen({ port: 3000 })
 ```
 
-Routes that read `getContext()` after an `await` need a [Universal Middleware](https://github.com/magne4000/universal-middleware) release with [#382](https://github.com/magne4000/universal-middleware/pull/382); without it they can see the context of another request. JSON `POST` requests to your routes need one with [#383](https://github.com/magne4000/universal-middleware/pull/383); `HEAD` requests, redirects and `204` answers from your routes need one with [#384](https://github.com/magne4000/universal-middleware/pull/384). Without them these answer 500.
+Routes that read `getContext()` after an `await` need a [Universal Middleware](https://github.com/magne4000/universal-middleware) release with [#382](https://github.com/magne4000/universal-middleware/pull/382); without it they can see the context of another request. JSON `POST` requests to your routes need one with [#383](https://github.com/magne4000/universal-middleware/pull/383), or they answer 500. Once a `+middleware` changes the response (CORS and cookies do), you also need one with [#384](https://github.com/magne4000/universal-middleware/pull/384): without it `HEAD` answers 500, redirects and `204` answers turn into 404s, and an unknown path answers 404 and then kills the process.
 
 The pages are one catch-all route, so Fastify matches the routes you register after `vike(app)` first.
 
