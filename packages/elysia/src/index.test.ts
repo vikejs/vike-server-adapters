@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { serve } from "srvx";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("vike", async () => {
@@ -80,20 +81,30 @@ describe("@vikejs/elysia", () => {
     expect(await (await get(app, "/about")).text()).toBe("app");
   });
 
-  it("hands a JSON body to a route registered after vike(app)", async () => {
-    const app = new Elysia();
-    vike(app);
-    app.post("/api/echo", ({ body }) => body);
+  // Needs a Universal Middleware release with #383: over real HTTP the route gets an empty body without it (an
+  // in-process `app.handle()` hides that). Run it against a build with `UNIVERSAL_MIDDLEWARE_FIXED=1 pnpm test`; until
+  // the dependency is bumped it is skipped.
+  it.skipIf(!process.env.UNIVERSAL_MIDDLEWARE_FIXED)(
+    "hands a JSON body to a route registered after vike(app), over HTTP",
+    async () => {
+      const app = new Elysia();
+      vike(app);
+      app.post("/api/echo", ({ body }) => Response.json({ body }));
 
-    const response = await app.handle(
-      new Request("http://localhost/api/echo", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ a: 1 }),
-      }),
-    );
-    expect(await response.json()).toEqual({ a: 1 });
-  });
+      const server = serve({ fetch: (request) => app.handle(request), port: 0, silent: true });
+      try {
+        await server.ready();
+        const response = await fetch(new URL("/api/echo", server.url), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ a: 1 }),
+        });
+        expect(await response.json()).toEqual({ body: { a: 1 } });
+      } finally {
+        await server.close(true);
+      }
+    },
+  );
 
   it("answers HEAD on a route registered after vike(app)", async () => {
     const app = new Elysia();

@@ -92,8 +92,9 @@ describe("@vikejs/fastify", () => {
     expect(response.body).not.toContain("page");
   });
 
-  // These two need a Universal Middleware release with #383 and #384: they fail against the published one. Run them
-  // against a build of both with `UNIVERSAL_MIDDLEWARE_FIXED=1 pnpm test`; until the dependency is bumped they are skipped.
+  // These need a Universal Middleware release with #383 (JSON body) and #384 (HEAD, redirect, 204): they fail against
+  // the published one. Run them against a build of both with `UNIVERSAL_MIDDLEWARE_FIXED=1 pnpm test`; until the
+  // dependency is bumped they are skipped.
   const needsFixedUniversalMiddleware = it.skipIf(!process.env.UNIVERSAL_MIDDLEWARE_FIXED);
 
   needsFixedUniversalMiddleware("hands a JSON body to a route registered after vike(app)", async () => {
@@ -111,6 +112,17 @@ describe("@vikejs/fastify", () => {
     app.get("/api/me", () => "api");
 
     expect((await app.inject({ method: "HEAD", url: "/api/me" })).statusCode).toBe(200);
+  });
+
+  needsFixedUniversalMiddleware("keeps a redirect and a 204 from a route registered after vike(app)", async () => {
+    const app = Fastify();
+    await vike(app);
+    app.get("/old", (_request, reply) => reply.redirect("/new", 302));
+    app.get("/empty", (_request, reply) => reply.code(204).send());
+
+    const redirect = await app.inject({ url: "/old" });
+    expect([redirect.statusCode, redirect.headers.location]).toEqual([302, "/new"]);
+    expect((await app.inject({ url: "/empty" })).statusCode).toBe(204);
   });
 
   it("throws when vike(app) is called twice on the same app", async () => {
