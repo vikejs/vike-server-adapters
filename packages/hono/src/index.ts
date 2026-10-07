@@ -30,17 +30,7 @@ function assertNoRouteBefore(app: App) {
   }
 }
 
-/**
- * Install every `+middleware` right away, and Vike's pages and not-found page as `app.notFound()`, so that the routes
- * the app registers after `vike(app)` keep their precedence over pages.
- */
-export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = []) {
-  if (installed.has(app)) {
-    throw new Error("[@vikejs/hono] vike(app) was already called on this app: call it once.");
-  }
-  assertNoRouteBefore(app);
-  installed.add(app);
-
+function renderPagesOnNotFound(app: App) {
   const pages = createHandler(() => universalHandler)();
   app.notFound(async (c) => {
     // A route that matched and answered with `c.notFound()` is answered by Hono, not by a page
@@ -49,6 +39,9 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = [
     }
     return (await pages(c, async () => {})) as Response;
   });
+}
+
+function assertNotFoundNotReplaced(app: App) {
   let notFoundReplaced = false;
   const setNotFound = app.notFound;
   app.notFound = (handler) => {
@@ -65,6 +58,21 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = [
     }
     await next();
   });
+}
+
+/**
+ * Install every `+middleware` right away, and Vike's pages and not-found page as `app.notFound()`, so that the routes
+ * the app registers after `vike(app)` keep their precedence over pages.
+ */
+export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = []) {
+  if (installed.has(app)) {
+    throw new Error("[@vikejs/hono] vike(app) was already called on this app: call it once.");
+  }
+  assertNoRouteBefore(app);
+  installed.add(app);
+
+  renderPagesOnNotFound(app);
+  assertNotFoundNotReplaced(app);
 
   return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
 }
