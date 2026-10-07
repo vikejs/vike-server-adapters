@@ -1,6 +1,6 @@
 {
   "name": "@vikejs/srvx",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "type": "module",
   "description": "srvx server adapter for Vike",
   "files": [
@@ -21,8 +21,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@universal-middleware/core": "^0.4.18",
-    "@universal-middleware/srvx": "^0.1.3"
+    "@universal-middleware/core": "^0.5.0",
+    "@universal-middleware/srvx": "^0.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
