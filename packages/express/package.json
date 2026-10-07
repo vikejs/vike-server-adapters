@@ -21,11 +21,14 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@universal-middleware/core": "^0.4.18",
     "@universal-middleware/express": "^0.4.30"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^20.19.43",
+    "cors": "^2.8.6",
     "express": "^5.2.1",
     "tsdown": "^0.21.10",
     "typescript": "^5.9.3",

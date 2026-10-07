@@ -1,5 +1,7 @@
-import { type App, apply, connectToWeb } from "@universal-middleware/express";
-import vikeMiddleware from "vike/universal-middleware";
+import { getUniversalProp, methodSymbol } from "@universal-middleware/core";
+import { type App, apply, connectToWeb, createHandler } from "@universal-middleware/express";
+import type { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from "express";
+import { getUniversalMiddlewares, universalHandler } from "vike";
 
 export * from "@universal-middleware/express";
 
@@ -22,6 +24,73 @@ export function toFetchHandler(app: Parameters<typeof connectToWeb>[0]): (reques
 
 type EnhancedMiddlewareExpress = Parameters<typeof apply>[1][number];
 
+type Layer = { route?: { path: unknown; methods: Record<string, boolean> }; handle?: { stack?: Layer[] } };
+
+// Vike's pages answer the methods its handler declares, not DELETE for example
+const pagesMethods: string[] = [getUniversalProp(universalHandler, methodSymbol) ?? []].flat();
+
+const installed = new WeakSet<App>();
+
+function isWildcard(path: unknown) {
+  return typeof path === "string" && path.includes("*");
+}
+
+// Only routes have `layer.route`, also inside mounted routers; `express.static` and `cors()` are middleware.
+// `app.all()` is every method: Express 4 sets `_all`, Express 5 lists them all.
+function findRouteBefore(stack: Layer[]): { methods: string; path: string } | undefined {
+  for (const layer of stack) {
+    if (layer.route) {
+      const { path, methods } = layer.route;
+      const names = Object.keys(methods).filter((method) => methods[method]);
+      if (names.every((method) => method === "options")) continue;
+      if (isWildcard(path)) continue;
+      return {
+        methods: names.includes("_all") || names.length > 5 ? "ALL" : names.join(",").toUpperCase(),
+        path: String(path),
+      };
+    }
+    if (layer.handle?.stack) {
+      const route = findRouteBefore(layer.handle.stack);
+      if (route) return route;
+    }
+  }
+}
+
+function assertNoRouteBefore(app: App) {
+  const express4 = "del" in app;
+  const router = express4
+    ? (app as { _router?: { stack: Layer[] } })._router
+    : (app as { router: { stack: Layer[] } }).router;
+  const route = router && findRouteBefore(router.stack);
+  if (route) {
+    throw new Error(
+      `[@vikejs/express] Call vike(app) before registering the app's routes: ${route.methods} ${route.path} was registered first, so the +middleware would not run for it. ` +
+        `To answer a route before the +middleware, install them yourself: apply(app, getUniversalMiddlewares()) and apply(app, [universalHandler]).`,
+    );
+  }
+}
+
+/**
+ * Install every `+middleware` right away, and Vike's pages and not-found page when the first request arrives, so that the
+ * routes the app registers after `vike(app)` keep their precedence over pages. A route registered after the first request
+ * sits behind the pages.
+ */
 export default function vike(app: App, middlewares: EnhancedMiddlewareExpress[] = []) {
-  return apply(app, [...middlewares, vikeMiddleware]);
+  if (installed.has(app)) {
+    throw new Error("[@vikejs/express] vike(app) was already called on this app: call it once.");
+  }
+  assertNoRouteBefore(app);
+  installed.add(app);
+
+  const handle = app.handle;
+  app.handle = function (this: App, ...args: Parameters<App["handle"]>) {
+    app.handle = handle;
+    const pages = createHandler(() => universalHandler)();
+    app.use((req: ExpressRequest, res: ExpressResponse, next: NextFunction) =>
+      pagesMethods.includes(req.method) ? pages(req as Parameters<typeof pages>[0], res, next) : next(),
+    );
+    return handle.apply(this, args);
+  };
+
+  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
 }

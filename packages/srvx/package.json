@@ -21,6 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@universal-middleware/core": "^0.4.18",
     "@universal-middleware/srvx": "^0.1.3"
   },
   "devDependencies": {

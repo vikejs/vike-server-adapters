@@ -1,10 +1,28 @@
 import { type App, apply } from "@universal-middleware/hattip";
-import vikeMiddleware from "vike/universal-middleware";
+import { getUniversalMiddlewares, universalHandler } from "vike";
 
 export * from "@universal-middleware/hattip";
 
 type EnhancedMiddlewareHattip = Parameters<typeof apply>[1][number];
 
+const installed = new WeakSet<App>();
+
+/**
+ * Install every `+middleware` right away, and Vike's pages and not-found page when the router builds its handler, so
+ * that the routes the app registers after `vike(app)` keep their precedence over pages.
+ */
 export default function vike(app: App, middlewares: EnhancedMiddlewareHattip[] = []) {
-  return apply(app, [...middlewares, vikeMiddleware]);
+  if (installed.has(app)) {
+    throw new Error("[@vikejs/hattip] vike(app) was already called on this app: call it once.");
+  }
+  installed.add(app);
+
+  const buildHandler = app.buildHandler;
+  app.buildHandler = function (this: App) {
+    app.buildHandler = buildHandler;
+    apply(app, [universalHandler]);
+    return buildHandler.call(this);
+  };
+
+  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
 }

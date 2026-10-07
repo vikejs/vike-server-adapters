@@ -1,8 +1,32 @@
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { logger } from "hono/logger";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("vike/universal-middleware", () => ({ default: () => {} }));
+vi.mock("vike", async () => {
+  const { enhance } = await import("@universal-middleware/core");
+  return {
+    // Stands for the user's +middleware: it puts the `x-user` header in the context, after `x-delay` milliseconds
+    getUniversalMiddlewares: () => [
+      enhance(
+        async (request: Request, context: Universal.Context) => {
+          await new Promise((resolve) => setTimeout(resolve, Number(request.headers.get("x-delay") ?? 0)));
+          return { ...context, user: request.headers.get("x-user") };
+        },
+        { name: "stub:middleware" },
+      ),
+    ],
+    // Stands for Vike's pages
+    universalHandler: enhance(async (request: Request) => new Response(`page ${new URL(request.url).pathname}`), {
+      name: "stub:pages",
+      method: ["GET", "POST"],
+      path: "/**",
+      immutable: true,
+    }),
+  };
+});
 
-import vike, { apply } from "./index.js";
+import vike, { apply, getContext } from "./index.js";
 
 describe("@vikejs/hono", () => {
   it("vike is a function", () => {
@@ -11,5 +35,140 @@ describe("@vikejs/hono", () => {
 
   it("apply is a function", () => {
     expect(apply).toBeTypeOf("function");
+  });
+
+  it("runs the +middleware before a route registered after vike(app), and the route sees the context", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/api/me", (c) => c.json({ user: (getContext(c) as { user: string }).user }));
+
+    const response = await app.request("/api/me", { headers: { "x-user": "alice" } });
+    expect(await response.json()).toEqual({ user: "alice" });
+  });
+
+  it("keeps the context of concurrent requests apart", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/api/me", async (c) => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return c.text((getContext(c) as { user: string }).user);
+    });
+
+    const [slow, fast] = await Promise.all([
+      app.request("/api/me", { headers: { "x-user": "slow", "x-delay": "30" } }),
+      app.request("/api/me", { headers: { "x-user": "fast" } }),
+    ]);
+    expect([await slow.text(), await fast.text()]).toEqual(["slow", "fast"]);
+  });
+
+  it("renders a page after the app's routes", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/api/me", (c) => c.text("api"));
+
+    const response = await app.request("/about");
+    expect(await response.text()).toBe("page /about");
+  });
+
+  it("answers with the app's route when a page has the same path", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/about", (c) => c.text("app"));
+
+    expect(await (await app.request("/about")).text()).toBe("app");
+  });
+
+  it("answers Hono's own not-found when a matched route calls c.notFound()", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/user/:id", (c) => c.notFound());
+
+    const response = await app.request("/user/1");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("404 Not Found");
+  });
+
+  it("renders a page when a middleware on the page's path passes the request on", async () => {
+    const app = new Hono();
+    vike(app);
+    app.use("/about", (_c, next) => next());
+
+    expect(await (await app.request("/about")).text()).toBe("page /about");
+  });
+
+  it("renders a page when a wildcard route such as serveStatic passes the request on", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/static/*", (_c, next) => next());
+
+    expect(await (await app.request("/static/missing.css")).text()).toBe("page /static/missing.css");
+  });
+
+  it("does not render a page for a method Vike's handler does not declare", async () => {
+    const app = new Hono();
+    vike(app);
+
+    const response = await app.request("/about", { method: "DELETE" });
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("404 Not Found");
+  });
+
+  it("places the extra middlewares before the +middleware", async () => {
+    const { enhance } = await import("@universal-middleware/core");
+    const order: string[] = [];
+    const app = new Hono();
+    vike(app, [
+      enhance(
+        (_request, context) => {
+          order.push("extra");
+          return context;
+        },
+        { name: "extra" },
+      ),
+    ]);
+    app.get("/", (c) => c.text(order.join()));
+
+    expect(await (await app.request("/")).text()).toBe("extra");
+  });
+
+  describe("a route registered before vike(app)", () => {
+    it.each([
+      ["GET", (app: Hono) => app.get("/health", (c) => c.text("ok"))],
+      ["POST", (app: Hono) => app.post("/submit", (c) => c.text("ok"))],
+    ])("throws for a %s route", (_method, register) => {
+      const app = new Hono();
+      register(app);
+      expect(() => vike(app)).toThrow(/Call vike\(app\) before registering the app's routes/);
+    });
+
+    it.each([
+      ["a logger", (app: Hono) => app.use(logger(() => {}))],
+      ["cors()", (app: Hono) => app.use(cors())],
+      ["cors() on a path", (app: Hono) => app.use("/api/*", cors())],
+      ["a preflight OPTIONS route", (app: Hono) => app.options("/*", (c) => c.body(null, 204))],
+      ["a static file route on a wildcard path", (app: Hono) => app.get("/static/*", (_c, next) => next())],
+      ["app.all on a wildcard path", (app: Hono) => app.all("/*", (_c, next) => next())],
+    ])("does not throw for %s", (_name, register) => {
+      const app = new Hono();
+      register(app);
+      expect(() => vike(app)).not.toThrow();
+    });
+  });
+
+  it("throws when vike(app) is called twice on the same app", () => {
+    const app = new Hono();
+    vike(app);
+    expect(() => vike(app)).toThrow(/already called/);
+  });
+
+  it("throws at the first request when app.notFound() replaced the handler", async () => {
+    const app = new Hono();
+    vike(app);
+    app.notFound((c) => c.text("mine", 404));
+    app.onError((error, c) => c.text(error.message, 500));
+
+    const response = await app.request("/about");
+    expect(response.status).toBe(500);
+    expect(await response.text()).toMatch(/app\.notFound\(\) was called after vike\(app\)/);
   });
 });
