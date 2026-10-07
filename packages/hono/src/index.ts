@@ -12,12 +12,8 @@ const pagesMethods: string[] = [getUniversalProp(universalHandler, methodSymbol)
 const installed = new WeakSet<App>();
 
 // `app.use()` registers `ALL`, so a `GET` or `POST` entry is a route the app wrote
-function isWildcard(path: string) {
-  return path.includes("*");
-}
-
 function isAppRoute({ method, path }: { method: string; path: string }) {
-  return method !== "ALL" && !isWildcard(path);
+  return method !== "ALL" && !path.includes("*");
 }
 
 function assertNoRouteBefore(app: App) {
@@ -41,6 +37,7 @@ function renderPagesOnNotFound(app: App) {
   });
 }
 
+// Watches the app.notFound() calls made from now on, so it runs after renderPagesOnNotFound()
 function assertNotFoundNotReplaced(app: App) {
   let notFoundReplaced = false;
   const setNotFound = app.notFound;
