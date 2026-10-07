@@ -61,6 +61,35 @@ describe("@vikejs/srvx", () => {
     expect([await slow.text(), await fast.text()]).toEqual(["slow", "fast"]);
   });
 
+  it("hands a JSON body to a route in middlewares", async () => {
+    const { enhance } = await import("@universal-middleware/core");
+    const fetch = vike([
+      enhance(async (request: Request) => Response.json(await request.json()), {
+        name: "echo",
+        method: "POST",
+        path: "/api/echo",
+      }),
+    ]);
+
+    const response = await fetch(
+      new Request("http://localhost/api/echo", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ a: 1 }),
+      }) as never,
+    );
+    expect(await response.json()).toEqual({ a: 1 });
+  });
+
+  it("answers HEAD on a route in middlewares", async () => {
+    const { enhance } = await import("@universal-middleware/core");
+    // A route declared for GET does not match HEAD, so the route declares both
+    const fetch = vike([enhance(() => new Response("api"), { name: "api", method: ["GET", "HEAD"], path: "/api/me" })]);
+
+    const response = await fetch(new Request("http://localhost/api/me", { method: "HEAD" }) as never);
+    expect(response.status).toBe(200);
+  });
+
   it("renders a page where no route matches", async () => {
     expect(await (await get(vike(), "/about")).text()).toBe("page /about");
   });

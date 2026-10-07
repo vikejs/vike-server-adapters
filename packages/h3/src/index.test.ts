@@ -1,4 +1,4 @@
-import { createApp, createRouter, eventHandler, toWebHandler } from "h3";
+import { createApp, createRouter, eventHandler, readBody, toWebHandler } from "h3";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("vike", async () => {
@@ -93,6 +93,37 @@ describe("@vikejs/h3", () => {
     );
 
     expect(await (await get(app, "/about")).text()).toBe("app");
+  });
+
+  it("hands a JSON body to a route registered after vike(app)", async () => {
+    const app = createApp();
+    vike(app);
+    routerApp(app).post(
+      "/api/echo",
+      eventHandler((event) => readBody(event)),
+    );
+
+    const response = await toWebHandler(app)(
+      new Request("http://localhost/api/echo", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ a: 1 }),
+      }),
+    );
+    expect(await response.json()).toEqual({ a: 1 });
+  });
+
+  it("answers HEAD on a route registered after vike(app)", async () => {
+    const app = createApp();
+    vike(app);
+    // h3's router answers HEAD with 404 for a `get` route, so the route answers every method
+    app.use(
+      "/api/me",
+      eventHandler(() => "api"),
+    );
+
+    const response = await toWebHandler(app)(new Request("http://localhost/api/me", { method: "HEAD" }));
+    expect(response.status).toBe(200);
   });
 
   it("appends the pages once, at the first request", async () => {

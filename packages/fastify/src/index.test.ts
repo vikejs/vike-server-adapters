@@ -13,6 +13,8 @@ vi.mock("vike", async () => {
         },
         { name: "stub:middleware" },
       ),
+      // Stands for a +middleware that sets headers on the response
+      enhance(() => (response: Response) => response, { name: "stub:response-step" }),
     ],
     // Stands for Vike's pages
     universalHandler: enhance(async (request: Request) => new Response(`page ${new URL(request.url).pathname}`), {
@@ -88,6 +90,27 @@ describe("@vikejs/fastify", () => {
     const response = await app.inject({ method: "DELETE", url: "/about" });
     expect(response.statusCode).toBe(404);
     expect(response.body).not.toContain("page");
+  });
+
+  // These two need a Universal Middleware release with #383 and #384: they fail against the published one. Run them
+  // against a build of both with `UNIVERSAL_MIDDLEWARE_FIXED=1 pnpm test`; until the dependency is bumped they are skipped.
+  const needsFixedUniversalMiddleware = it.skipIf(!process.env.UNIVERSAL_MIDDLEWARE_FIXED);
+
+  needsFixedUniversalMiddleware("hands a JSON body to a route registered after vike(app)", async () => {
+    const app = Fastify();
+    await vike(app);
+    app.post("/api/echo", (request) => request.body);
+
+    const response = await app.inject({ method: "POST", url: "/api/echo", payload: { a: 1 } });
+    expect(response.json()).toEqual({ a: 1 });
+  });
+
+  needsFixedUniversalMiddleware("answers HEAD on a route registered after vike(app)", async () => {
+    const app = Fastify();
+    await vike(app);
+    app.get("/api/me", () => "api");
+
+    expect((await app.inject({ method: "HEAD", url: "/api/me" })).statusCode).toBe(200);
   });
 
   it("throws when vike(app) is called twice on the same app", async () => {

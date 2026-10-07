@@ -25,7 +25,11 @@ app.get('/api/me', (request) => getContext(request).user) // sees what a +middle
 await app.listen({ port: 3000 })
 ```
 
+Requests with a body (JSON `POST`) and `HEAD` requests to your routes need a [Universal Middleware](https://github.com/magne4000/universal-middleware) release with [#383](https://github.com/magne4000/universal-middleware/pull/383) and [#384](https://github.com/magne4000/universal-middleware/pull/384); without it they answer 500.
+
 The pages are one catch-all route, so Fastify matches the routes you register after `vike(app)` first.
+
+The `+middleware` run in a `preHandler` hook, after Fastify parsed the body: a request Fastify cannot parse, such as an `application/octet-stream` body without a parser, answers 415 before they run.
 
 Calling `vike(app)` twice on the same app throws.
 

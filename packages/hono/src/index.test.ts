@@ -104,6 +104,27 @@ describe("@vikejs/hono", () => {
     expect(await (await app.request("/static/missing.css")).text()).toBe("page /static/missing.css");
   });
 
+  it("hands a JSON body to a route registered after vike(app)", async () => {
+    const app = new Hono();
+    vike(app);
+    app.post("/api/echo", async (c) => c.json(await c.req.json()));
+
+    const response = await app.request("/api/echo", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ a: 1 }),
+    });
+    expect(await response.json()).toEqual({ a: 1 });
+  });
+
+  it("answers HEAD on a route registered after vike(app)", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/api/me", (c) => c.text("api"));
+
+    expect((await app.request("/api/me", { method: "HEAD" })).status).toBe(200);
+  });
+
   it("does not render a page for a method Vike's handler does not declare", async () => {
     const app = new Hono();
     vike(app);
@@ -145,7 +166,8 @@ describe("@vikejs/hono", () => {
       ["a logger", (app: Hono) => app.use(logger(() => {}))],
       ["cors()", (app: Hono) => app.use(cors())],
       ["cors() on a path", (app: Hono) => app.use("/api/*", cors())],
-      ["a preflight OPTIONS route", (app: Hono) => app.options("/*", (c) => c.body(null, 204))],
+      ["a preflight OPTIONS route", (app: Hono) => app.options("/health", (c) => c.body(null, 204))],
+      ["a preflight OPTIONS route on a wildcard path", (app: Hono) => app.options("/*", (c) => c.body(null, 204))],
       ["a static file route on a wildcard path", (app: Hono) => app.get("/static/*", (_c, next) => next())],
       ["app.all on a wildcard path", (app: Hono) => app.all("/*", (_c, next) => next())],
     ])("does not throw for %s", (_name, register) => {

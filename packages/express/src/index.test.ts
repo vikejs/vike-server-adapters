@@ -121,6 +121,34 @@ describe("vike(app)", () => {
     expect(await (await get(app, "/about")).text()).toBe("app");
   });
 
+  it("hands a JSON body to a route registered after vike(app)", async () => {
+    const app = express();
+    vike(app);
+    app.post("/api/echo", express.json(), (req, res) => {
+      res.json(req.body);
+    });
+
+    const response = await toFetchHandler(app)(
+      new Request("http://localhost/api/echo", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ a: 1 }),
+      }),
+    );
+    expect(await response.json()).toEqual({ a: 1 });
+  });
+
+  it("answers HEAD on a route registered after vike(app)", async () => {
+    const app = express();
+    vike(app);
+    app.get("/api/me", (_req, res) => {
+      res.send("api");
+    });
+
+    const response = await toFetchHandler(app)(new Request("http://localhost/api/me", { method: "HEAD" }));
+    expect(response.status).toBe(200);
+  });
+
   it("does not render a page for a method Vike's handler does not declare", async () => {
     const app = express();
     vike(app);
@@ -162,7 +190,6 @@ describe("vike(app)", () => {
     it.each([
       ["GET", (app: express.Express) => app.get("/health", (_req, res) => void res.send("ok"))],
       ["POST", (app: express.Express) => app.post("/submit", (_req, res) => void res.send("ok"))],
-      ["app.all", (app: express.Express) => app.all("/health", (_req, res) => void res.send("ok"))],
       ["a route of a mounted router", (app: express.Express) => app.use("/sub", sub())],
     ])("throws for %s", (_name, register) => {
       const app = express();
@@ -179,6 +206,7 @@ describe("vike(app)", () => {
     it.each([
       ["express.static", (app: express.Express) => app.use(express.static("."))],
       ["cors()", (app: express.Express) => app.use(cors())],
+      ["a preflight route", (app: express.Express) => app.options("/health", cors())],
       ["a preflight route on a wildcard path", (app: express.Express) => app.options("/{*any}", cors())],
       ["a wildcard route", (app: express.Express) => app.all("/{*any}", (_req, _res, next) => next())],
       ["a logger", (app: express.Express) => app.use((_req, _res, next) => next())],

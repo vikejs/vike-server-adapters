@@ -25,7 +25,7 @@ app.get('/api/me', ({ getContext }) => Response.json(getContext().user)) // sees
 app.listen(3000)
 ```
 
-The pages are one catch-all route, so Elysia matches the routes you register after `vike(app)` first. A route that returns a plain value instead of a `Response` cannot be post-processed by a `+middleware` that returns a response step: return a `Response` from such routes.
+The pages are one catch-all route, so Elysia matches the routes you register after `vike(app)` first. When a `+middleware` returns a response step, a route that returns a plain value instead of a `Response` answers 500, because the step cannot post-process it: return a `Response` from such routes.
 
 Calling `vike(app)` twice on the same app throws.
 

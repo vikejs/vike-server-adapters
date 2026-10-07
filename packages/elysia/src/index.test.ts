@@ -80,6 +80,30 @@ describe("@vikejs/elysia", () => {
     expect(await (await get(app, "/about")).text()).toBe("app");
   });
 
+  it("hands a JSON body to a route registered after vike(app)", async () => {
+    const app = new Elysia();
+    vike(app);
+    app.post("/api/echo", ({ body }) => body);
+
+    const response = await app.handle(
+      new Request("http://localhost/api/echo", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ a: 1 }),
+      }),
+    );
+    expect(await response.json()).toEqual({ a: 1 });
+  });
+
+  it("answers HEAD on a route registered after vike(app)", async () => {
+    const app = new Elysia();
+    vike(app);
+    app.get("/api/me", () => "api");
+
+    const response = await app.handle(new Request("http://localhost/api/me", { method: "HEAD" }));
+    expect(response.status).toBe(200);
+  });
+
   it("throws when vike(app) is called twice on the same app", () => {
     const app = new Elysia();
     vike(app);
