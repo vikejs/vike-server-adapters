@@ -17,7 +17,7 @@ import vike from '@vikejs/srvx'
 serve({ fetch: vike() })
 ```
 
-`vike()` returns the `fetch` handler of the server: it runs every `+middleware` on every request, then Vike's pages and not-found page. A `+middleware` that is a handler (`order: 0`, or a `path` and no `order`, such as Telefunc's `/_telefunc`) answers its path unless one of your routes does.
+`vike()` returns the `fetch` handler of the server: the matching `+middleware` that aren't handlers run before your routes, and the handlers and Vike's pages and not-found page run after them. A `+middleware` that is a handler (`order: 0`, or a `path` and no `order`, such as Telefunc's `/_telefunc`) answers its path unless one of your routes does.
 
 srvx has no app to register routes on, so your own routes go in the array you pass as the first argument, as [universal handlers](https://github.com/magne4000/universal-middleware) with a `method` and a `path`. They run after the `+middleware`, read what the `+middleware` put in the context, and win over a page at the same path:
 

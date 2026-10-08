@@ -10,7 +10,7 @@ npm install @vikejs/hono hono
 
 ## Usage
 
-Call `vike(app)` before registering your own routes. It installs the `+middleware` right away, so they run on every request, before your routes, and your routes can read what they put in the context with `getContext()`. The `+middleware` that are handlers (`order: 0`, or a `path` and no `order`, such as Telefunc's `/_telefunc`) are the exception: they run together with Vike's pages and not-found page, after all the routes you register later, so your routes keep their precedence over them.
+Call `vike(app)` before registering your own routes. It installs the `+middleware` that aren't handlers right away: the ones that match a request run before your routes, and your routes can read what they put in the context with `getContext()`. The `+middleware` that are handlers (`order: 0`, or a `path` and no `order`, such as Telefunc's `/_telefunc`) run together with Vike's pages and not-found page, after all the routes you register later, so your routes keep their precedence over them.
 
 ```ts
 import { Hono } from 'hono'
