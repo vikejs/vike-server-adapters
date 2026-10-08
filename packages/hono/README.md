@@ -25,7 +25,7 @@ app.get('/api/me', (c) => c.json(getContext(c).user)) // sees what a +middleware
 export default app
 ```
 
-The pages run as `app.notFound()`. A route that matched and answered with `c.notFound()` is answered by Hono's own not-found response, not by a page. The adapter throws at the first request if `app.notFound()` was called after `vike(app)`, since that replaces Vike's pages.
+The pages run as `app.notFound()`. A route that matched and answered with `c.notFound()` is answered by Hono's own not-found response, not by a page. The adapter throws at the first request if `app.notFound()` was called after `vike(app)`, since that replaces Vike's pages. It throws at the first request too if the app was mounted with `app.route()`, which doesn't carry `app.notFound()` over: call `vike(app)` on the parent app.
 
 `vike(app)` throws if a route was registered before it, because the `+middleware` would not run for that route: any route other than `ALL`, `OPTIONS` and wildcard paths (`app.use(logger())`, `app.use(cors())` and `app.get('/static/*', serveStatic())` are fine). To answer a route before the `+middleware` on purpose, use the manual path.
 

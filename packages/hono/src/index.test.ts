@@ -237,6 +237,17 @@ describe("@vikejs/hono", () => {
     expect(() => vike(app)).toThrow(/already called/);
   });
 
+  it("throws at the first request when the app is mounted with app.route(), which drops app.notFound()", async () => {
+    const child = new Hono();
+    vike(child);
+    const parent = new Hono().route("/", child);
+    parent.onError((error, c) => c.text(error.message, 500));
+
+    const response = await parent.request("/about");
+    expect(response.status).toBe(500);
+    expect(await response.text()).toMatch(/mounted with app\.route\(\)/);
+  });
+
   it("throws at the first request when app.notFound() replaced the handler", async () => {
     const app = new Hono();
     vike(app);

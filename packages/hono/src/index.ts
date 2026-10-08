@@ -74,6 +74,14 @@ function guardNotFound(app: App) {
           "Use app.onError() or a route instead, or install the pages yourself: apply(app, [universalHandler]).",
       );
     }
+    // app.route() copies the routes but not app.notFound(), so a parent app would answer its own 404 instead of the pages
+    const route = c.req.matchedRoutes.find((route) => route.handler === guard);
+    if (!route || !app.routes.includes(route)) {
+      throw new Error(
+        "[@vikejs/hono] An app that vike(app) was called on was mounted with app.route(), which does not carry app.notFound() with it, so its pages would not render. " +
+          "Call vike(app) on the app that serves the requests, the parent.",
+      );
+    }
     const notFound = c.notFound;
     c.notFound = () => {
       answeredNotFound.add(c);
