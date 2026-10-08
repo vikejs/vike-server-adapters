@@ -1,6 +1,5 @@
-import { getUniversalProp, methodSymbol } from "@universal-middleware/core";
-import { type App, apply, connectToWeb, createHandler } from "@universal-middleware/express";
-import type { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from "express";
+import { getUniversalProp, orderSymbol, pathSymbol, pipeRoute } from "@universal-middleware/core";
+import { type App, apply, connectToWeb, createMiddleware } from "@universal-middleware/express";
 import { getUniversalMiddlewares, universalHandler } from "vike";
 
 export * from "@universal-middleware/express";
@@ -26,15 +25,12 @@ type EnhancedMiddlewareExpress = Parameters<typeof apply>[1][number];
 
 type Layer = { route?: { path: unknown; methods: Record<string, boolean> }; handle?: { stack?: Layer[] } };
 
-// Vike's pages answer the methods its handler declares, not DELETE for example
-const pagesMethods: string[] = [getUniversalProp(universalHandler, methodSymbol) ?? []].flat();
-
 const installed = new WeakSet<App>();
 
 /**
- * Install every `+middleware` right away, and Vike's pages and not-found page when the first request arrives, so that the
- * routes the app registers after `vike(app)` keep their precedence over pages. A route registered after the first request
- * sits behind the pages.
+ * Install the `+middleware` that are not handlers right away, and the ones that are handlers together with Vike's pages and
+ * not-found page when the first request arrives, so that the routes the app registers after `vike(app)` keep their
+ * precedence over them. A route registered after the first request sits behind them.
  */
 export default function vike(app: App, middlewares: EnhancedMiddlewareExpress[] = []) {
   if (installed.has(app)) {
@@ -43,9 +39,10 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareExpress[] 
   assertNoRouteBefore(app);
   installed.add(app);
 
-  appendPagesOnFirstRequest(app);
+  const universalMiddlewares = getUniversalMiddlewares();
+  appendHandlersOnFirstRequest(app, universalMiddlewares.filter(isHandler));
 
-  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
+  return apply(app, [...middlewares, ...universalMiddlewares.filter((middleware) => !isHandler(middleware))]);
 }
 
 function assertNoRouteBefore(app: App) {
@@ -92,14 +89,21 @@ function routerStack(app: App): Layer[] | undefined {
   return router?.stack;
 }
 
-function appendPagesOnFirstRequest(app: App) {
+function appendHandlersOnFirstRequest(app: App, handlers: ReturnType<typeof getUniversalMiddlewares>) {
   const handle = app.handle;
   app.handle = function (this: App, ...args: Parameters<App["handle"]>) {
     app.handle = handle;
-    const pages = createHandler(() => universalHandler)();
-    app.use((req: ExpressRequest, res: ExpressResponse, next: NextFunction) =>
-      pagesMethods.includes(req.method) ? pages(req as Parameters<typeof pages>[0], res, next) : next(),
-    );
+    // A request no handler or page answers, such as DELETE, goes on to the next layer
+    const pages = createMiddleware(() =>
+      pipeRoute([...handlers, universalHandler], { pipeMiddlewaresInUniversalRoute: false }),
+    )();
+    app.use(pages);
     return handle.apply(this, args);
   };
+}
+
+// Universal Middleware core's isHandler() is not exported
+function isHandler(middleware: Parameters<typeof getUniversalProp>[0]) {
+  const order = getUniversalProp(middleware, orderSymbol);
+  return typeof order === "number" ? order === 0 : Boolean(getUniversalProp(middleware, pathSymbol));
 }

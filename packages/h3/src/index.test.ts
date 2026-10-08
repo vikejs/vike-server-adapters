@@ -13,6 +13,10 @@ vi.mock("vike", async () => {
         },
         { name: "stub:middleware" },
       ),
+      // Stands for a +middleware that is a handler: it answers /x unless the app has a route there
+      enhance(() => new Response("handler"), { name: "stub:handler", method: "GET", path: "/x" }),
+      // Stands for a +middleware that is not a handler and runs before the app's routes
+      enhance((_request, context) => ({ ...context, early: true }), { name: "stub:early", order: -100 }),
     ],
     // Stands for Vike's pages
     universalHandler: enhance(async (request: Request) => new Response(`page ${new URL(request.url).pathname}`), {
@@ -53,6 +57,32 @@ describe("@vikejs/h3", () => {
 
     const response = await send(app, "/api/me", { headers: { "x-user": "alice" } });
     expect(await response.json()).toEqual({ user: "alice" });
+  });
+
+  it("answers with a +middleware that is a handler where the app has no route", async () => {
+    const app = createApp();
+    vike(app);
+    expect(await (await send(app, "/x")).text()).toBe("handler");
+  });
+
+  it("answers with the app's route when a +middleware that is a handler has the same path", async () => {
+    const app = createApp();
+    vike(app);
+    routerApp(app).get(
+      "/x",
+      eventHandler(() => "app"),
+    );
+    expect(await (await send(app, "/x")).text()).toBe("app");
+  });
+
+  it("runs a +middleware with a negative order before the app's routes", async () => {
+    const app = createApp();
+    vike(app);
+    routerApp(app).get(
+      "/api/early",
+      eventHandler((event) => String((getContext(event) as { early?: boolean }).early)),
+    );
+    expect(await (await send(app, "/api/early")).text()).toBe("true");
   });
 
   it("keeps the context of concurrent requests apart", async () => {

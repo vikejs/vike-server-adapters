@@ -16,6 +16,10 @@ vi.mock("vike", async () => {
         },
         { name: "stub:middleware" },
       ),
+      // Stands for a +middleware that is a handler: it answers /x unless the app has a route there
+      enhance(() => new Response("handler"), { name: "stub:handler", method: "GET", path: "/x" }),
+      // Stands for a +middleware that is not a handler and runs before the app's routes
+      enhance((_request, context) => ({ ...context, early: true }), { name: "stub:early", order: -100 }),
     ],
     // Stands for Vike's pages
     universalHandler: enhance(async (request: Request) => new Response(`page ${new URL(request.url).pathname}`), {
@@ -41,10 +45,30 @@ describe("@vikejs/hono", () => {
   it("runs the +middleware before a route registered after vike(app), and the route sees the context", async () => {
     const app = new Hono();
     vike(app);
-    app.get("/api/me", (c) => c.json({ user: (getContext(c) as { user: string }).user }));
+    app.get("/api/me", (c) => c.json({ user: (getContext(c as never) as { user: string }).user }));
 
     const response = await app.request("/api/me", { headers: { "x-user": "alice" } });
     expect(await response.json()).toEqual({ user: "alice" });
+  });
+
+  it("answers with a +middleware that is a handler where the app has no route", async () => {
+    const app = new Hono();
+    vike(app);
+    expect(await (await app.request("/x")).text()).toBe("handler");
+  });
+
+  it("answers with the app's route when a +middleware that is a handler has the same path", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/x", (c) => c.text("app"));
+    expect(await (await app.request("/x")).text()).toBe("app");
+  });
+
+  it("runs a +middleware with a negative order before the app's routes", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/api/early", (c) => c.text(String((getContext(c as never) as { early?: boolean }).early)));
+    expect(await (await app.request("/api/early")).text()).toBe("true");
   });
 
   it("keeps the context of concurrent requests apart", async () => {
@@ -52,7 +76,7 @@ describe("@vikejs/hono", () => {
     vike(app);
     app.get("/api/me", async (c) => {
       await new Promise((resolve) => setTimeout(resolve, 20));
-      return c.text((getContext(c) as { user: string }).user);
+      return c.text((getContext(c as never) as { user: string }).user);
     });
 
     const [slow, fast] = await Promise.all([

@@ -13,6 +13,10 @@ vi.mock("vike", async () => {
         },
         { name: "stub:middleware" },
       ),
+      // Stands for a +middleware that is a handler: it answers /x unless the app has a route there
+      enhance(() => new Response("handler"), { name: "stub:handler", method: "GET", path: "/x" }),
+      // Stands for a +middleware that is not a handler and runs before the app's routes
+      enhance((_request, context) => ({ ...context, early: true }), { name: "stub:early", order: -100 }),
     ],
     // Stands for Vike's pages
     universalHandler: enhance(async (request: Request) => new Response(`page ${new URL(request.url).pathname}`), {
@@ -48,6 +52,28 @@ describe("@vikejs/srvx", () => {
 
     const response = await send(fetch, "/api/me", { headers: { "x-user": "alice" } });
     expect(await response.text()).toBe("alice");
+  });
+
+  it("answers with a +middleware that is a handler where no route in middlewares matches", async () => {
+    expect(await (await send(vike(), "/x")).text()).toBe("handler");
+  });
+
+  it("answers with the route in middlewares when a +middleware that is a handler has the same path", async () => {
+    const fetch = vike([enhance(() => new Response("app"), { name: "app-x", method: "GET", path: "/x" })]);
+
+    expect(await (await send(fetch, "/x")).text()).toBe("app");
+  });
+
+  it("runs a +middleware with a negative order before a route in middlewares", async () => {
+    const fetch = vike([
+      enhance((_request, context) => new Response(String((context as { early?: boolean }).early)), {
+        name: "early-check",
+        method: "GET",
+        path: "/api/early",
+      }),
+    ]);
+
+    expect(await (await send(fetch, "/api/early")).text()).toBe("true");
   });
 
   it("keeps the context of concurrent requests apart", async () => {

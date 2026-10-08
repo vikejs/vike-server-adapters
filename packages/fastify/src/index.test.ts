@@ -18,6 +18,10 @@ vi.mock("vike", async () => {
       ),
       // Stands for a +middleware that sets headers on the response
       enhance(() => (response: Response) => response, { name: "stub:response-step" }),
+      // Stands for a +middleware that is a handler: it answers /x unless the app has a route there
+      enhance(() => new Response("handler"), { name: "stub:handler", method: "GET", path: "/x" }),
+      // Stands for a +middleware that is not a handler and runs before the app's routes
+      enhance((_request, context) => ({ ...context, early: true }), { name: "stub:early", order: -100 }),
     ],
     // Stands for Vike's pages
     universalHandler: enhance(async (request: Request) => new Response(`page ${new URL(request.url).pathname}`), {
@@ -53,6 +57,26 @@ describe("@vikejs/fastify", () => {
 
     const response = await app.inject({ url: "/api/me", headers: { "x-user": "alice" } });
     expect(response.json()).toEqual({ user: "alice" });
+  });
+
+  it("answers with a +middleware that is a handler where the app has no route", async () => {
+    const app = Fastify();
+    await vike(app);
+    expect((await app.inject({ url: "/x" })).body).toBe("handler");
+  });
+
+  it("answers with the app's route when a +middleware that is a handler has the same path", async () => {
+    const app = Fastify();
+    await vike(app);
+    app.get("/x", () => "app");
+    expect((await app.inject({ url: "/x" })).body).toBe("app");
+  });
+
+  it("runs a +middleware with a negative order before the app's routes", async () => {
+    const app = Fastify();
+    await vike(app);
+    app.get("/api/early", (request) => String((getContext(request) as { early?: boolean }).early));
+    expect((await app.inject({ url: "/api/early" })).body).toBe("true");
   });
 
   it("renders a page after the app's routes", async () => {
