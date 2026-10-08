@@ -151,6 +151,44 @@ describe("@vikejs/hono", () => {
     expect(await response.text()).toBe("404 Not Found");
   });
 
+  it.each([
+    "use",
+    "get",
+  ] as const)("answers Hono's own not-found when a wildcard route registered before vike(app) calls c.notFound() with %s", async (method) => {
+    const app = new Hono();
+    app[method]("/static/*", (c) => c.notFound());
+    vike(app);
+
+    const response = await app.request("/static/missing");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("404 Not Found");
+  });
+
+  it("doesn't reach a +middleware that is a handler past an auth middleware when a route registered before vike(app) calls c.notFound()", async () => {
+    const auth = enhance(
+      (request: Request) => (request.headers.has("x-deny") ? new Response("denied", { status: 401 }) : undefined),
+      {
+        name: "auth",
+        order: -100,
+      },
+    );
+    const app = new Hono();
+    app.get("/x/*", (c) => c.notFound());
+    vike(app, [auth]);
+
+    const response = await app.request("/x", { headers: { "x-deny": "1" } });
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("404 Not Found");
+  });
+
+  it("renders a page when a route registered before vike(app) passes the request on", async () => {
+    const app = new Hono();
+    app.get("/static/*", (_c, next) => next());
+    vike(app);
+
+    expect(await (await app.request("/static/missing.css")).text()).toBe("page /static/missing.css");
+  });
+
   it("renders a page when a wildcard route such as serveStatic passes the request on", async () => {
     const app = new Hono();
     vike(app);

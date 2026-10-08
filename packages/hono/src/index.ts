@@ -42,16 +42,17 @@ function isAppRoute({ method, path }: { method: string; path: string }) {
   return method !== "ALL" && !path.includes("*");
 }
 
-// The contexts whose route called `c.notFound()`
-const answeredNotFound = new WeakSet<object>();
+// The contexts that went through the guard and whose routes haven't called `c.notFound()` since
+const fallThrough = new WeakSet<object>();
 
 function renderHandlersOnNotFound(app: App, handlers: ReturnType<typeof getUniversalMiddlewares>) {
   const pages = createMiddleware(() =>
     pipeRoute([...handlers, universalHandler], { pipeMiddlewaresInUniversalRoute: false }),
   )();
   app.notFound(async (c) => {
-    // Hono calls this both when the routes pass the request on and when a route calls `c.notFound()`; the latter is a 404
-    if (answeredNotFound.has(c)) return c.text("404 Not Found", 404);
+    // Hono calls this both when the routes pass the request on and when a route calls `c.notFound()`, which is a 404,
+    // including a route registered before vike(app), which ends the request before the guard
+    if (!fallThrough.has(c)) return c.text("404 Not Found", 404);
     // A request no handler or page answers, such as DELETE, is a 404
     return ((await pages(c, async () => {})) as Response | undefined) ?? c.text("404 Not Found", 404);
   });
@@ -82,9 +83,10 @@ function guardNotFound(app: App) {
           "Call vike(app) on the app that serves the requests, the parent, and not on the mounted app.",
       );
     }
+    fallThrough.add(c);
     const notFound = c.notFound;
     c.notFound = () => {
-      answeredNotFound.add(c);
+      fallThrough.delete(c);
       return notFound();
     };
     await next();
