@@ -79,7 +79,7 @@ function guardNotFound(app: App) {
     if (!route || !app.routes.includes(route)) {
       throw new Error(
         "[@vikejs/hono] An app that vike(app) was called on was mounted with app.route(), which does not carry app.notFound() with it, so its pages would not render. " +
-          "Call vike(app) on the app that serves the requests, the parent.",
+          "Call vike(app) on the app that serves the requests, the parent, and not on the mounted app.",
       );
     }
     const notFound = c.notFound;
