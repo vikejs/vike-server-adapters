@@ -22,7 +22,7 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = [
 
   const universalMiddlewares = getUniversalMiddlewares();
   renderHandlersOnNotFound(app, universalMiddlewares.filter(isHandler));
-  assertNotFoundNotReplaced(app);
+  guardNotFound(app);
 
   return apply(app, [...middlewares, ...universalMiddlewares.filter((middleware) => !isHandler(middleware))]);
 }
@@ -42,36 +42,46 @@ function isAppRoute({ method, path }: { method: string; path: string }) {
   return method !== "ALL" && !path.includes("*");
 }
 
+// The contexts whose route called `c.notFound()`
+const answeredNotFound = new WeakSet<object>();
+
 function renderHandlersOnNotFound(app: App, handlers: ReturnType<typeof getUniversalMiddlewares>) {
   const pages = createMiddleware(() =>
     pipeRoute([...handlers, universalHandler], { pipeMiddlewaresInUniversalRoute: false }),
   )();
   app.notFound(async (c) => {
-    // A route that matched and answered with `c.notFound()` is answered by Hono, not by a handler or a page
-    if (c.req.matchedRoutes.some(isAppRoute)) return c.text("404 Not Found", 404);
+    // Hono calls this both when the routes pass the request on and when a route calls `c.notFound()`; the latter is a 404
+    if (answeredNotFound.has(c)) return c.text("404 Not Found", 404);
     // A request no handler or page answers, such as DELETE, is a 404
     return ((await pages(c, async () => {})) as Response | undefined) ?? c.text("404 Not Found", 404);
   });
 }
 
-// Watches the app.notFound() calls made from now on, so it runs after renderPagesOnNotFound()
-function assertNotFoundNotReplaced(app: App) {
+// Runs before the app's routes on every request
+function guardNotFound(app: App) {
   let notFoundReplaced = false;
   const setNotFound = app.notFound;
+  // Watches the app.notFound() calls made from now on, so it runs after renderHandlersOnNotFound()
   app.notFound = (handler) => {
     notFoundReplaced = true;
     return setNotFound(handler);
   };
-  // Throws at the first request, where the app is complete: calling app.notFound() later would hide the pages
-  app.use(async (_c, next) => {
+  const guard: Parameters<typeof app.use>[0] = async (c, next) => {
+    // Throws at the first request, where the app is complete: calling app.notFound() later would hide the pages
     if (notFoundReplaced) {
       throw new Error(
         "[@vikejs/hono] app.notFound() was called after vike(app), which replaced the handler that renders Vike's pages. " +
           "Use app.onError() or a route instead, or install the pages yourself: apply(app, [universalHandler]).",
       );
     }
+    const notFound = c.notFound;
+    c.notFound = () => {
+      answeredNotFound.add(c);
+      return notFound();
+    };
     await next();
-  });
+  };
+  app.use(guard);
 }
 
 // Universal Middleware core's isHandler() is not exported

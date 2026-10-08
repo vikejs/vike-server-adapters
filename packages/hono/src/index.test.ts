@@ -121,6 +121,36 @@ describe("@vikejs/hono", () => {
     expect(await (await app.request("/about")).text()).toBe("page /about");
   });
 
+  it("renders a page when a method-specific middleware on the page's path passes the request on", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/about", async (_c, next) => {
+      await next();
+    });
+
+    expect(await (await app.request("/about")).text()).toBe("page /about");
+  });
+
+  it("answers with a +middleware that is a handler when a method-specific middleware on its path passes the request on", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/x", async (_c, next) => {
+      await next();
+    });
+
+    expect(await (await app.request("/x")).text()).toBe("handler");
+  });
+
+  it("answers Hono's own not-found when a wildcard route calls c.notFound()", async () => {
+    const app = new Hono();
+    vike(app);
+    app.get("/users/*", (c) => c.notFound());
+
+    const response = await app.request("/users/missing");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("404 Not Found");
+  });
+
   it("renders a page when a wildcard route such as serveStatic passes the request on", async () => {
     const app = new Hono();
     vike(app);
