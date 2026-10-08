@@ -55,6 +55,6 @@ apply(app, [universalHandler])
 export default app
 ```
 
-`universalHandler` is Vike's pages and not-found page; it runs no `+middleware`.
+`universalHandler` is Vike's pages and not-found page; it runs no `+middleware`. The `+middleware` that are handlers run where `apply(app, getUniversalMiddlewares())` is, so a route registered after it can't override them, unlike with `vike(app)`.
 
 This package also re-exports everything from [`@universal-middleware/h3`](https://github.com/magne4000/universal-middleware).
