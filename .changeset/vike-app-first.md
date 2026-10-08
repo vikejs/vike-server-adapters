@@ -8,9 +8,9 @@
 "@vikejs/srvx": minor
 ---
 
-feat: `vike(app)` runs every `+middleware` on every request, before the app's own routes
+feat: `vike(app)` runs every `+middleware` that isn't a handler on every request, before the app's own routes
 
-`vike(app)` now installs every `+middleware` right away (`getUniversalMiddlewares()` from `vike`) and arranges for Vike's pages and not-found page (`universalHandler`) to run after the routes the app registers later. Routes the app registers after `vike(app)` see what the `+middleware` put in the context and keep their precedence over pages. The signature is unchanged.
+`vike(app)` now installs every `+middleware` that isn't a handler right away (`getUniversalMiddlewares()` from `vike`) and arranges for Vike's pages and not-found page (`universalHandler`) to run after the routes the app registers later. Routes the app registers after `vike(app)` see what the `+middleware` put in the context and keep their precedence over pages. The signature is unchanged.
 
 - A `+middleware` that is a handler (`order: 0`, or a `path` and no `order`; Universal Middleware core 0.6's `isHandler`) is installed together with the pages instead of right away, so a route the app registers after `vike(app)` on the same path answers instead of it (Telefunc's `/_telefunc`). Every other `+middleware` still runs first. Requires `@universal-middleware/core` 0.6.
 - Express and H3: the handlers and the pages are appended when the first request arrives; a route registered after the first request sits behind the pages.
@@ -22,4 +22,4 @@ feat: `vike(app)` runs every `+middleware` on every request, before the app's ow
 - Elysia: a JSON body sent to a route after `vike(app)` needs a Universal Middleware release containing universal-middleware#383; without it the route gets an empty body.
 - Calling `vike(app)` twice on the same app throws.
 
-For more control, use `apply(app, getUniversalMiddlewares())` first and `apply(app, [universalHandler])` last (on Fastify and Elysia, one call: `apply(app, [...getUniversalMiddlewares(), universalHandler])`). Requires a Vike version that exports `getUniversalMiddlewares` and `universalHandler`.
+For more control, use `apply(app, getUniversalMiddlewares())` first and `apply(app, [universalHandler])` last (on Fastify and Elysia, one call: `apply(app, [...getUniversalMiddlewares(), universalHandler])`). There, the handlers in `getUniversalMiddlewares()` run where it's applied, so a route registered after it can't override them. Requires a Vike version that exports `getUniversalMiddlewares` and `universalHandler`.
