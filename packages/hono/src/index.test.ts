@@ -5,14 +5,22 @@ import { logger } from "hono/logger";
 import { describe, expect, it, vi } from "vitest";
 
 // Stands for the proxy of Vike's +middleware that aren't handlers, which vike(app) applies and which looks the list up upon each request. Here: the user's
-// +middleware puts the `x-user` header in the context, after `x-delay` milliseconds, and an early one sets `early`
+// +middleware puts the `x-user` header in the context, after `x-delay` milliseconds, and with an `x-step` header it also adds a response step that sets `x-step` on the response
 vi.mock("vike/__internal", async () => {
   const { enhance } = await import("@universal-middleware/core");
   return {
     plusMiddlewareProxy: enhance(
       async (request: Request, context: Universal.Context) => {
         await new Promise((resolve) => setTimeout(resolve, Number(request.headers.get("x-delay") ?? 0)));
-        return { ...context, early: true, user: request.headers.get("x-user") };
+        if (request.headers.has("x-step")) {
+          // A middleware returns a context or a response step, not both: with a response step, it mutates the context
+          Object.assign(context, { user: request.headers.get("x-user") });
+          return (response: Response) => {
+            response.headers.set("x-step", "applied");
+            return response;
+          };
+        }
+        return { ...context, user: request.headers.get("x-user") };
       },
       { name: "stub:proxy" },
     ),
@@ -74,11 +82,15 @@ describe("@vikejs/hono", () => {
     expect(await (await app.request("/x")).text()).toBe("app");
   });
 
-  it("runs a +middleware with a negative order before the app's routes", async () => {
+  it("applies the response step of the +middleware to the response of a route registered after vike(app), and of a page", async () => {
     const app = new Hono();
     vike(app);
-    app.get("/api/early", (c) => c.text(String((getContext(c as never) as { early?: boolean }).early)));
-    expect(await (await app.request("/api/early")).text()).toBe("true");
+    app.get("/api/me", (c) => c.text("api"));
+
+    for (const path of ["/api/me", "/about"]) {
+      expect((await app.request(path, { headers: { "x-step": "1" } })).headers.get("x-step")).toBe("applied");
+    }
+    expect((await app.request("/api/me")).headers.get("x-step")).toBe(null);
   });
 
   it("keeps the context of concurrent requests apart", async () => {

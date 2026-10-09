@@ -6,14 +6,22 @@ import { describe, expect, it, vi } from "vitest";
 const hooks = vi.hoisted(() => ({ beforeContextSet: undefined as undefined | (() => Promise<void>) }));
 
 // Stands for the proxy of Vike's +middleware that aren't handlers, which vike(app) applies and which looks the list up upon each request. Here: the user's
-// +middleware puts the `x-user` header in the context, after `x-delay` milliseconds, and an early one sets `early`
+// +middleware puts the `x-user` header in the context, after `hooks.beforeContextSet`, and with an `x-step` header it also adds a response step that sets `x-step` on the response
 vi.mock("vike/__internal", async () => {
   const { enhance } = await import("@universal-middleware/core");
   return {
     plusMiddlewareProxy: enhance(
       async (request: Request, context: Universal.Context) => {
-        await new Promise((resolve) => setTimeout(resolve, Number(request.headers.get("x-delay") ?? 0)));
-        return { ...context, early: true, user: request.headers.get("x-user") };
+        await hooks.beforeContextSet?.();
+        if (request.headers.has("x-step")) {
+          // A middleware returns a context or a response step, not both: with a response step, it mutates the context
+          Object.assign(context, { user: request.headers.get("x-user") });
+          return (response: Response) => {
+            response.headers.set("x-step", "applied");
+            return response;
+          };
+        }
+        return { ...context, user: request.headers.get("x-user") };
       },
       { name: "stub:proxy" },
     ),
@@ -81,11 +89,15 @@ describe("@vikejs/fastify", () => {
     expect((await app.inject({ url: "/x" })).body).toBe("app");
   });
 
-  it("runs a +middleware with a negative order before the app's routes", async () => {
+  it("applies the response step of the +middleware to the response of a route registered after vike(app), and of a page", async () => {
     const app = Fastify();
     await vike(app);
-    app.get("/api/early", (request) => String((getContext(request) as { early?: boolean }).early));
-    expect((await app.inject({ url: "/api/early" })).body).toBe("true");
+    app.get("/api/me", () => "api");
+
+    for (const url of ["/api/me", "/about"]) {
+      expect((await app.inject({ url, headers: { "x-step": "1" } })).headers["x-step"]).toBe("applied");
+    }
+    expect((await app.inject({ url: "/api/me" })).headers["x-step"]).toBeUndefined();
   });
 
   it("renders a page after the app's routes", async () => {

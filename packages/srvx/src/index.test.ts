@@ -2,14 +2,22 @@ import { enhance } from "@universal-middleware/core";
 import { describe, expect, it, vi } from "vitest";
 
 // Stands for the proxy of Vike's +middleware that aren't handlers, which vike(app) applies and which looks the list up upon each request. Here: the user's
-// +middleware puts the `x-user` header in the context, after `x-delay` milliseconds, and an early one sets `early`
+// +middleware puts the `x-user` header in the context, after `x-delay` milliseconds, and with an `x-step` header it also adds a response step that sets `x-step` on the response
 vi.mock("vike/__internal", async () => {
   const { enhance } = await import("@universal-middleware/core");
   return {
     plusMiddlewareProxy: enhance(
       async (request: Request, context: Universal.Context) => {
         await new Promise((resolve) => setTimeout(resolve, Number(request.headers.get("x-delay") ?? 0)));
-        return { ...context, early: true, user: request.headers.get("x-user") };
+        if (request.headers.has("x-step")) {
+          // A middleware returns a context or a response step, not both: with a response step, it mutates the context
+          Object.assign(context, { user: request.headers.get("x-user") });
+          return (response: Response) => {
+            response.headers.set("x-step", "applied");
+            return response;
+          };
+        }
+        return { ...context, user: request.headers.get("x-user") };
       },
       { name: "stub:proxy" },
     ),
@@ -76,16 +84,13 @@ describe("@vikejs/srvx", () => {
     expect(await (await send(fetch, "/x")).text()).toBe("app");
   });
 
-  it("runs a +middleware with a negative order before a route in middlewares", async () => {
-    const fetch = vike([
-      enhance((_request, context) => new Response(String((context as { early?: boolean }).early)), {
-        name: "early-check",
-        method: "GET",
-        path: "/api/early",
-      }),
-    ]);
+  it("applies the response step of the +middleware to the response of a route in middlewares, and of a page", async () => {
+    const fetch = vike([enhance(() => new Response("api"), { name: "api", method: "GET", path: "/api/me" })]);
 
-    expect(await (await send(fetch, "/api/early")).text()).toBe("true");
+    for (const path of ["/api/me", "/about"]) {
+      expect((await send(fetch, path, { headers: { "x-step": "1" } })).headers.get("x-step")).toBe("applied");
+    }
+    expect((await send(fetch, "/api/me")).headers.get("x-step")).toBe(null);
   });
 
   it("keeps the context of concurrent requests apart", async () => {
