@@ -47,4 +47,6 @@ serve({ fetch: apply(middlewares) })
 
 Each element of `middlewares` has an `isHandler` property. The last one is Vike's pages and not-found page, after the `+middleware` that are handlers.
 
+If you put your own routes in the array you apply, srvx runs the `+middleware` that are handlers before them too, and a route can't override one; `vike()` doesn't have this limit.
+
 This package also re-exports everything from [`@universal-middleware/srvx`](https://github.com/magne4000/universal-middleware).
