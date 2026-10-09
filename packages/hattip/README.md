@@ -46,7 +46,9 @@ import { getGlobalContext } from 'vike/server'
 
 const router = createRouter()
 
-const { middlewares } = await getGlobalContext()
+const globalContext = await getGlobalContext()
+if (globalContext.isClientSide) throw new Error('Server only')
+const { middlewares } = globalContext
 apply(
   router,
   middlewares.filter((m) => !m.isHandler),

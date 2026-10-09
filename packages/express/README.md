@@ -51,7 +51,9 @@ import { getGlobalContext } from 'vike/server'
 const app = express()
 
 app.get('/health', (req, res) => res.send('ok')) // answered before the +middleware
-const { middlewares } = await getGlobalContext()
+const globalContext = await getGlobalContext()
+if (globalContext.isClientSide) throw new Error('Server only')
+const { middlewares } = globalContext
 apply(
   app,
   middlewares.filter((m) => !m.isHandler),

@@ -37,7 +37,9 @@ serve({ fetch: vike([me]) })
 import { apply } from '@vikejs/srvx'
 import { getGlobalContext } from 'vike/server'
 
-const { middlewares } = await getGlobalContext()
+const globalContext = await getGlobalContext()
+if (globalContext.isClientSide) throw new Error('Server only')
+const { middlewares } = globalContext
 serve({ fetch: apply(middlewares) })
 ```
 

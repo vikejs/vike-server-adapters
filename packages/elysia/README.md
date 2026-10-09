@@ -48,7 +48,9 @@ import { getGlobalContext } from 'vike/server'
 
 const app = new Elysia()
 
-const { middlewares } = await getGlobalContext()
+const globalContext = await getGlobalContext()
+if (globalContext.isClientSide) throw new Error('Server only')
+const { middlewares } = globalContext
 apply(app, middlewares)
 
 app.get('/api/me', ({ getContext }) => Response.json(getContext().user))
