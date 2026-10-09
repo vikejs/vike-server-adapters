@@ -1,5 +1,6 @@
 import { type App, apply } from "@universal-middleware/hattip";
-import { getUniversalMiddlewares, universalHandler } from "vike";
+import { universalHandler } from "vike";
+import { plusMiddlewareProxy } from "vike/__internal";
 
 export * from "@universal-middleware/hattip";
 
@@ -24,5 +25,5 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareHattip[] =
     return buildHandler.call(this);
   };
 
-  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
+  return apply(app, [...middlewares, plusMiddlewareProxy]);
 }

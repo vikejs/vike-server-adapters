@@ -1,5 +1,6 @@
 import { apply } from "@universal-middleware/srvx";
-import { getUniversalMiddlewares, universalHandler } from "vike";
+import { universalHandler } from "vike";
+import { plusMiddlewareProxy } from "vike/__internal";
 
 export * from "@universal-middleware/srvx";
 
@@ -10,5 +11,5 @@ type EnhancedMiddlewareSrvx = Parameters<typeof apply>[0][number];
  * not-found page.
  */
 export default function vike(middlewares: EnhancedMiddlewareSrvx[] = []) {
-  return apply([...middlewares, ...getUniversalMiddlewares(), universalHandler]);
+  return apply([...middlewares, plusMiddlewareProxy, universalHandler]);
 }

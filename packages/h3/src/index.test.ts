@@ -1,21 +1,24 @@
 import { createApp, createRouter, eventHandler, readBody, toWebHandler } from "h3";
 import { describe, expect, it, vi } from "vitest";
 
+// Stands for the proxy of Vike's +middleware that aren't handlers, which vike(app) applies and which looks the list up upon each request. Here: the user's
+// +middleware puts the `x-user` header in the context, after `x-delay` milliseconds, and an early one sets `early`
+vi.mock("vike/__internal", async () => {
+  const { enhance } = await import("@universal-middleware/core");
+  return {
+    plusMiddlewareProxy: enhance(
+      async (request: Request, context: Universal.Context) => {
+        await new Promise((resolve) => setTimeout(resolve, Number(request.headers.get("x-delay") ?? 0)));
+        return { ...context, early: true, user: request.headers.get("x-user") };
+      },
+      { name: "stub:proxy" },
+    ),
+  };
+});
+
 vi.mock("vike", async () => {
   const { enhance } = await import("@universal-middleware/core");
   return {
-    // Stands for the user's +middleware: it puts the `x-user` header in the context, after `x-delay` milliseconds
-    getUniversalMiddlewares: () => [
-      enhance(
-        async (request: Request, context: Universal.Context) => {
-          await new Promise((resolve) => setTimeout(resolve, Number(request.headers.get("x-delay") ?? 0)));
-          return { ...context, user: request.headers.get("x-user") };
-        },
-        { name: "stub:middleware" },
-      ),
-      // Stands for a +middleware that is not a handler: getUniversalMiddlewares() returns only those, they run before the app's routes
-      enhance((_request, context) => ({ ...context, early: true }), { name: "stub:early", order: -100 }),
-    ],
     // Stands for Vike's pages: like the real one, it declares every method, first runs the +middleware that are handlers (here /x), answers 404 for a method the pages don't serve, then renders the page
     universalHandler: enhance(
       async (request: Request) => {

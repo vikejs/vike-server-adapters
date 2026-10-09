@@ -1,6 +1,7 @@
 import { type App, apply, createHandler } from "@universal-middleware/hono";
 import type { MiddlewareHandler } from "hono";
-import { getUniversalMiddlewares, universalHandler } from "vike";
+import { universalHandler } from "vike";
+import { plusMiddlewareProxy } from "vike/__internal";
 
 export * from "@universal-middleware/hono";
 
@@ -22,7 +23,7 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = [
   renderPagesOnNotFound(app);
   guardNotFound(app);
 
-  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
+  return apply(app, [...middlewares, plusMiddlewareProxy]);
 }
 
 function assertNoRouteBefore(app: App) {
@@ -30,7 +31,7 @@ function assertNoRouteBefore(app: App) {
   if (route) {
     throw new Error(
       `[@vikejs/hono] Call vike(app) before registering the app's routes: ${route.method} ${route.path} was registered first, so the +middleware would not run for it. ` +
-        `To answer a route before the +middleware, install them yourself: apply(app, getUniversalMiddlewares()) and apply(app, [universalHandler]).`,
+        `To answer a route before the +middleware, install them yourself: apply(app, await getUniversalMiddlewares()) and apply(app, [universalHandler]).`,
     );
   }
 }

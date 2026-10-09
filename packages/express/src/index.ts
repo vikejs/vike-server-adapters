@@ -1,6 +1,7 @@
 import { type App, apply, connectToWeb, createHandler } from "@universal-middleware/express";
 import type { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from "express";
-import { getUniversalMiddlewares, universalHandler } from "vike";
+import { universalHandler } from "vike";
+import { plusMiddlewareProxy } from "vike/__internal";
 
 export * from "@universal-middleware/express";
 
@@ -41,7 +42,7 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareExpress[] 
 
   appendPagesOnFirstRequest(app);
 
-  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
+  return apply(app, [...middlewares, plusMiddlewareProxy]);
 }
 
 function assertNoRouteBefore(app: App) {
@@ -49,7 +50,7 @@ function assertNoRouteBefore(app: App) {
   if (route) {
     throw new Error(
       `[@vikejs/express] Call vike(app) before registering the app's routes: ${route.methods} ${route.path} was registered first, so the +middleware would not run for it. ` +
-        `To answer a route before the +middleware, install them yourself: apply(app, getUniversalMiddlewares()) and apply(app, [universalHandler]).`,
+        `To answer a route before the +middleware, install them yourself: apply(app, await getUniversalMiddlewares()) and apply(app, [universalHandler]).`,
     );
   }
 }

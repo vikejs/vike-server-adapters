@@ -1,6 +1,7 @@
 import { type App, apply, createHandler } from "@universal-middleware/h3";
 import { eventHandler } from "h3";
-import { getUniversalMiddlewares, universalHandler } from "vike";
+import { universalHandler } from "vike";
+import { plusMiddlewareProxy } from "vike/__internal";
 
 export * from "@universal-middleware/h3";
 
@@ -28,5 +29,5 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareH3[] = [])
     await onRequest?.(event);
   };
 
-  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
+  return apply(app, [...middlewares, plusMiddlewareProxy]);
 }

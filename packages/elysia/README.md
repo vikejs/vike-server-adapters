@@ -48,12 +48,14 @@ import { getUniversalMiddlewares, universalHandler } from 'vike'
 
 const app = new Elysia()
 
-apply(app, [...getUniversalMiddlewares(), universalHandler])
+apply(app, [...(await getUniversalMiddlewares()), universalHandler])
 
 app.get('/api/me', ({ getContext }) => Response.json(getContext().user))
 
 app.listen(3000)
 ```
+
+`vike(app)` looks the `+middleware` up on every request, so adding, removing or editing one in `vike dev` needs no restart. The list you apply yourself is read once, when you call `getUniversalMiddlewares()`: restart your server to pick up a change. Being a plain list, it can be filtered and re-ordered; your server stops at the first `+middleware` that answers, so one that must see every response needs an `order` before it.
 
 On Elysia the manual path is one call, with both functions: the pages are a catch-all route, so a separate call for the `+middleware` would hide them.
 
