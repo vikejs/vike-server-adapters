@@ -137,12 +137,7 @@ describe("@vikejs/fastify", () => {
     expect(runs).toBe(1);
   });
 
-  // These need a Universal Middleware release with #382 (context per request), #383 (JSON body) and #384 (HEAD,
-  // redirect, 204): they fail against the published one. Run them against a build of both with `UNIVERSAL_MIDDLEWARE_FIXED=1 pnpm test`; until the
-  // dependency is bumped they are skipped.
-  const needsFixedUniversalMiddleware = it.skipIf(!process.env.UNIVERSAL_MIDDLEWARE_FIXED);
-
-  needsFixedUniversalMiddleware("hands a JSON body to a route registered after vike(app)", async () => {
+  it("hands a JSON body to a route registered after vike(app)", async () => {
     const app = Fastify();
     await vike(app);
     app.post("/api/echo", (request) => request.body);
@@ -151,7 +146,7 @@ describe("@vikejs/fastify", () => {
     expect(response.json()).toEqual({ a: 1 });
   });
 
-  needsFixedUniversalMiddleware("answers HEAD on a route registered after vike(app)", async () => {
+  it("answers HEAD on a route registered after vike(app)", async () => {
     const app = Fastify();
     await vike(app);
     app.get("/api/me", () => "api");
@@ -159,7 +154,7 @@ describe("@vikejs/fastify", () => {
     expect((await app.inject({ method: "HEAD", url: "/api/me" })).statusCode).toBe(200);
   });
 
-  needsFixedUniversalMiddleware("keeps a redirect and a 204 from a route registered after vike(app)", async () => {
+  it("keeps a redirect and a 204 from a route registered after vike(app)", async () => {
     const app = Fastify();
     await vike(app);
     app.get("/old", (_request, reply) => reply.redirect("/new", 302));
@@ -171,9 +166,8 @@ describe("@vikejs/fastify", () => {
   });
 
   // A request reads the context after an await, while the other request's +middleware has already set its own. The
-  // barriers make the two requests interleave every time, so the test fails if the context is shared between requests
-  // (the released Universal Middleware keeps it on the route's config) and needs a release with #382.
-  needsFixedUniversalMiddleware("keeps the context of concurrent requests apart", async () => {
+  // barriers make the two requests interleave every time, so the test fails if the context is shared between requests.
+  it("keeps the context of concurrent requests apart", async () => {
     const meet = (count: number) => {
       let arrived = 0;
       let release: () => void;
