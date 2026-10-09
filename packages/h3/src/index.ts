@@ -1,9 +1,10 @@
 import { type App, apply, createHandler } from "@universal-middleware/h3";
 import { eventHandler } from "h3";
-import { universalHandler } from "vike";
 import { plusMiddlewareProxy } from "vike/__internal";
 
 export * from "@universal-middleware/h3";
+
+const [beforeRoutes, withPages] = plusMiddlewareProxy;
 
 type EnhancedMiddlewareH3 = Parameters<typeof apply>[1][number];
 
@@ -23,11 +24,11 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareH3[] = [])
   const onRequest = app.options.onRequest;
   app.options.onRequest = async (event) => {
     app.options.onRequest = onRequest;
-    // Not apply(app, [universalHandler]): it would set app.options.onBeforeResponse again, dropping one the app set after vike(app)
-    const pages = createHandler(() => universalHandler)();
+    // Not apply(app, [withPages]): it would set app.options.onBeforeResponse again, dropping one the app set after vike(app)
+    const pages = createHandler(() => withPages)();
     app.use(eventHandler((event) => pages(event)));
     await onRequest?.(event);
   };
 
-  return apply(app, [...middlewares, plusMiddlewareProxy]);
+  return apply(app, [...middlewares, beforeRoutes]);
 }

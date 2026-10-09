@@ -10,7 +10,7 @@ npm install @vikejs/elysia elysia
 
 ## Usage
 
-Call `vike(app)` before registering your own routes. It installs the `+middleware` that aren't handlers right away, so they run before your routes, and your routes can read what they put in the context with `getContext()`. It also arranges for Vike's pages and not-found page (`universalHandler`) to run after all the routes you register later, so your routes keep their precedence over pages. `universalHandler` also runs the `+middleware` that are handlers (`order: 0`, or a `path` and no `order`, such as Telefunc's `/_telefunc`) next to the pages, so a route you register later on the same path answers instead of them.
+Call `vike(app)` before registering your own routes. It installs the `+middleware` that aren't handlers right away, so they run before your routes, and your routes can read what they put in the context with `getContext()`. It also arranges for the `+middleware` that are handlers (`order: 0`, or a `path` and no `order`, such as Telefunc's `/_telefunc`) and Vike's pages and not-found page to run after all the routes you register later, so your routes keep their precedence over them: a route you register later on the same path as a handler answers instead of it.
 
 ```ts
 import { Elysia } from 'elysia'
@@ -39,16 +39,17 @@ vike(app, [myMiddleware()])
 
 ## Manual path
 
-For more control, do by hand what `vike(app)` does: install the `+middleware` first and Vike's pages last, with the two functions Vike exports.
+For more control, do by hand what `vike(app)` does: install the `+middleware` first and Vike's pages last, with `globalContext.middlewares`.
 
 ```ts
 import { Elysia } from 'elysia'
 import { apply } from '@vikejs/elysia'
-import { getUniversalMiddlewares, universalHandler } from 'vike'
+import { getGlobalContext } from 'vike/server'
 
 const app = new Elysia()
 
-apply(app, [...(await getUniversalMiddlewares()), universalHandler])
+const { middlewares } = await getGlobalContext()
+apply(app, middlewares)
 
 app.get('/api/me', ({ getContext }) => Response.json(getContext().user))
 
@@ -57,6 +58,6 @@ app.listen(3000)
 
 `vike(app)` looks the `+middleware` up on every request. To filter or re-order the list you apply yourself, see [`+middleware`](https://vike.dev/renderPage#middleware).
 
-On Elysia the manual path is one call, with both functions: the pages are a catch-all route, so a separate call for the `+middleware` would hide them.
+On Elysia the manual path is one call: the pages are a catch-all route, so a separate call for the `+middleware` would hide them. Elysia runs a middleware as a hook before every route, so applied like this the `+middleware` that are handlers run before your routes too, and a route can't override one; `vike(app)` doesn't have this limit.
 
 This package also re-exports everything from [`@universal-middleware/elysia`](https://github.com/magne4000/universal-middleware).

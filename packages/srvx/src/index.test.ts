@@ -1,52 +1,53 @@
 import { enhance } from "@universal-middleware/core";
 import { describe, expect, it, vi } from "vitest";
 
-// Stands for the proxy of Vike's +middleware that aren't handlers, which vike(app) applies and which looks the list up upon each request. Here: the user's
+// Stands for the proxy of Vike's +middleware that vike(app) applies: one element for the ones that aren't handlers, which looks the list up upon each request, one for the handlers with the pages. Here: the user's
 // +middleware puts the `x-user` header in the context, after `x-delay` milliseconds, and with an `x-step` header it also adds a response step that sets `x-step` on the response
 vi.mock("vike/__internal", async () => {
   const { enhance } = await import("@universal-middleware/core");
   return {
-    plusMiddlewareProxy: enhance(
-      async (request: Request, context: Universal.Context) => {
-        await new Promise((resolve) => setTimeout(resolve, Number(request.headers.get("x-delay") ?? 0)));
-        if (request.headers.has("x-step")) {
-          // A middleware returns a context or a response step, not both: with a response step, it mutates the context
-          Object.assign(context, { user: request.headers.get("x-user") });
-          return (response: Response) => {
-            response.headers.set("x-step", "applied");
-            return response;
-          };
-        }
-        return { ...context, user: request.headers.get("x-user") };
-      },
-      { name: "stub:proxy" },
-    ),
+    plusMiddlewareProxy: [
+      Object.assign(
+        enhance(
+          async (request: Request, context: Universal.Context) => {
+            await new Promise((resolve) => setTimeout(resolve, Number(request.headers.get("x-delay") ?? 0)));
+            if (request.headers.has("x-step")) {
+              // A middleware returns a context or a response step, not both: with a response step, it mutates the context
+              Object.assign(context, { user: request.headers.get("x-user") });
+              return (response: Response) => {
+                response.headers.set("x-step", "applied");
+                return response;
+              };
+            }
+            return { ...context, user: request.headers.get("x-user") };
+          },
+          { name: "stub:proxy" },
+        ),
+        { isHandler: false },
+      ),
+      // Stands for Vike's pages: like the real one, it declares every method, first runs the +middleware that are handlers (here /x), answers 404 for a method the pages don't serve, then renders the page
+      Object.assign(
+        enhance(
+          async (request: Request) => {
+            const { pathname } = new URL(request.url);
+            if (!["GET", "HEAD", "POST", "PUT", "OPTIONS", "PATCH"].includes(request.method)) {
+              return new Response("Not Found", { status: 404 });
+            }
+            return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
+          },
+          {
+            name: "stub:pages",
+            method: ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "CONNECT", "TRACE"],
+            path: "/**",
+            immutable: true,
+          },
+        ),
+        { isHandler: true },
+      ),
+    ],
   };
 });
 
-vi.mock("vike", async () => {
-  const { enhance } = await import("@universal-middleware/core");
-  return {
-    // Stands for Vike's pages: like the real one, it declares every method, first runs the +middleware that are handlers (here /x), answers 404 for a method the pages don't serve, then renders the page
-    universalHandler: enhance(
-      async (request: Request) => {
-        const { pathname } = new URL(request.url);
-        if (!["GET", "HEAD", "POST", "PUT", "OPTIONS", "PATCH"].includes(request.method)) {
-          return new Response("Not Found", { status: 404 });
-        }
-        return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
-      },
-      {
-        name: "stub:pages",
-        method: ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "CONNECT", "TRACE"],
-        path: "/**",
-        immutable: true,
-      },
-    ),
-  };
-});
-
-import { universalHandler } from "vike";
 import { plusMiddlewareProxy } from "vike/__internal";
 import vike, { apply } from "./index.js";
 
@@ -145,7 +146,7 @@ describe("@vikejs/srvx", () => {
 
   // The README's manual example
   it("answers 404 for DELETE on the manual path", async () => {
-    const fetch = apply([plusMiddlewareProxy, universalHandler]);
+    const fetch = apply([...plusMiddlewareProxy]);
 
     expect((await send(fetch, "/about", { method: "DELETE" })).status).toBe(404);
   });

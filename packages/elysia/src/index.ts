@@ -1,8 +1,9 @@
 import { type App, apply } from "@universal-middleware/elysia";
-import { universalHandler } from "vike";
 import { plusMiddlewareProxy } from "vike/__internal";
 
 export * from "@universal-middleware/elysia";
+
+const [beforeRoutes, withPages] = plusMiddlewareProxy;
 
 type EnhancedMiddlewareElysia = Parameters<typeof apply>[1][number];
 
@@ -17,5 +18,5 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareElysia[] =
     throw new Error("[@vikejs/elysia] vike(app) was already called on this app: call it once.");
   }
   installed.add(app);
-  return apply(app, [...middlewares, plusMiddlewareProxy, universalHandler]);
+  return apply(app, [...middlewares, beforeRoutes, withPages]);
 }

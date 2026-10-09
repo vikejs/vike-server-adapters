@@ -31,17 +31,18 @@ serve({ fetch: vike([me]) })
 
 ## Manual path
 
-`vike()` is the same as applying the `+middleware`, then Vike's pages last, with the two functions Vike exports:
+`vike()` is the same as applying the `+middleware`, then Vike's pages last, with `globalContext.middlewares`:
 
 ```ts
 import { apply } from '@vikejs/srvx'
-import { getUniversalMiddlewares, universalHandler } from 'vike'
+import { getGlobalContext } from 'vike/server'
 
-serve({ fetch: apply([...(await getUniversalMiddlewares()), universalHandler]) })
+const { middlewares } = await getGlobalContext()
+serve({ fetch: apply(middlewares) })
 ```
 
 `vike(app)` looks the `+middleware` up on every request. To filter or re-order the list you apply yourself, see [`+middleware`](https://vike.dev/renderPage#middleware).
 
-`universalHandler` is Vike's pages and not-found page; it also runs the `+middleware` that are handlers, and none of the others.
+Each element of `middlewares` has an `isHandler` property. The last one is Vike's pages and not-found page, after the `+middleware` that are handlers.
 
 This package also re-exports everything from [`@universal-middleware/srvx`](https://github.com/magne4000/universal-middleware).

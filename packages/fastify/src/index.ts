@@ -1,9 +1,10 @@
 import { type App, apply } from "@universal-middleware/fastify";
-import { universalHandler } from "vike";
 import { plusMiddlewareProxy } from "vike/__internal";
 
 export * from "@universal-middleware/fastify";
 export { toFetchHandler } from "srvx/node";
+
+const [beforeRoutes, withPages] = plusMiddlewareProxy;
 
 type EnhancedMiddlewareFastify = Parameters<typeof apply>[1][number];
 
@@ -18,5 +19,5 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareFastify[] 
     throw new Error("[@vikejs/fastify] vike(app) was already called on this app: call it once.");
   }
   installed.add(app);
-  return apply(app, [...middlewares, plusMiddlewareProxy, universalHandler]);
+  return apply(app, [...middlewares, beforeRoutes, withPages]);
 }

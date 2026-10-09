@@ -1,6 +1,5 @@
 import { type App, apply, connectToWeb, createHandler } from "@universal-middleware/express";
 import type { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from "express";
-import { universalHandler } from "vike";
 import { plusMiddlewareProxy } from "vike/__internal";
 
 export * from "@universal-middleware/express";
@@ -22,6 +21,8 @@ export function toFetchHandler(app: Parameters<typeof connectToWeb>[0]): (reques
   return async (request) => (await handler(request)) ?? new Response(null, { status: 404 });
 }
 
+const [beforeRoutes, withPages] = plusMiddlewareProxy;
+
 type EnhancedMiddlewareExpress = Parameters<typeof apply>[1][number];
 
 type Layer = { route?: { path: unknown; methods: Record<string, boolean> }; handle?: { stack?: Layer[] } };
@@ -42,7 +43,7 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareExpress[] 
 
   appendPagesOnFirstRequest(app);
 
-  return apply(app, [...middlewares, plusMiddlewareProxy]);
+  return apply(app, [...middlewares, beforeRoutes]);
 }
 
 function assertNoRouteBefore(app: App) {
@@ -50,7 +51,7 @@ function assertNoRouteBefore(app: App) {
   if (route) {
     throw new Error(
       `[@vikejs/express] Call vike(app) before registering the app's routes: ${route.methods} ${route.path} was registered first, so the +middleware would not run for it. ` +
-        `To answer a route before the +middleware, install them yourself: apply(app, await getUniversalMiddlewares()) and apply(app, [universalHandler]).`,
+        `To answer a route before the +middleware, install them yourself: apply(app, middlewares.filter((m) => !m.isHandler)) and apply(app, middlewares.filter((m) => m.isHandler)), with the middlewares of (await getGlobalContext()).middlewares.`,
     );
   }
 }
@@ -93,7 +94,7 @@ function appendPagesOnFirstRequest(app: App) {
   const handle = app.handle;
   app.handle = function (this: App, ...args: Parameters<App["handle"]>) {
     app.handle = handle;
-    const pages = createHandler(() => universalHandler)();
+    const pages = createHandler(() => withPages)();
     app.use((req: ExpressRequest, res: ExpressResponse, next: NextFunction) =>
       pages(req as Parameters<typeof pages>[0], res, next),
     );

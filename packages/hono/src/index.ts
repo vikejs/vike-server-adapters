@@ -1,9 +1,10 @@
 import { type App, apply, createHandler } from "@universal-middleware/hono";
 import type { MiddlewareHandler } from "hono";
-import { universalHandler } from "vike";
 import { plusMiddlewareProxy } from "vike/__internal";
 
 export * from "@universal-middleware/hono";
+
+const [beforeRoutes, withPages] = plusMiddlewareProxy;
 
 type EnhancedMiddlewareHono = Parameters<typeof apply>[1][number];
 
@@ -23,7 +24,7 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = [
   renderPagesOnNotFound(app);
   guardNotFound(app);
 
-  return apply(app, [...middlewares, plusMiddlewareProxy]);
+  return apply(app, [...middlewares, beforeRoutes]);
 }
 
 function assertNoRouteBefore(app: App) {
@@ -31,7 +32,7 @@ function assertNoRouteBefore(app: App) {
   if (route) {
     throw new Error(
       `[@vikejs/hono] Call vike(app) before registering the app's routes: ${route.method} ${route.path} was registered first, so the +middleware would not run for it. ` +
-        `To answer a route before the +middleware, install them yourself: apply(app, await getUniversalMiddlewares()) and apply(app, [universalHandler]).`,
+        `To answer a route before the +middleware, install them yourself: apply(app, middlewares.filter((m) => !m.isHandler)) and apply(app, middlewares.filter((m) => m.isHandler)), with the middlewares of (await getGlobalContext()).middlewares.`,
     );
   }
 }
@@ -45,7 +46,7 @@ function isAppRoute({ method, path }: { method: string; path: string }) {
 const fallThrough = new WeakSet<object>();
 
 function renderPagesOnNotFound(app: App) {
-  const pages = createHandler(() => universalHandler)();
+  const pages = createHandler(() => withPages)();
   app.notFound(async (c) => {
     // Hono calls this both when the routes pass the request on and when a route calls `c.notFound()`, which is a 404,
     // including a route registered before vike(app), which ends the request before the guard
@@ -68,7 +69,7 @@ function guardNotFound(app: App) {
     if (notFoundReplaced) {
       throw new Error(
         "[@vikejs/hono] app.notFound() was called after vike(app), which replaced the handler that renders Vike's pages. " +
-          "Use app.onError() or a route instead, or install the pages yourself: apply(app, [universalHandler]).",
+          "Use app.onError() or a route instead, or install the pages yourself: apply(app, middlewares.filter((m) => m.isHandler)).",
       );
     }
     // app.route() copies the routes but not app.notFound(), so a parent app would answer its own 404 instead of the pages
