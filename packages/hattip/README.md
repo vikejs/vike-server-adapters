@@ -10,7 +10,7 @@ npm install @vikejs/hattip @hattip/router
 
 ## Usage
 
-Call `vike(app)` before registering your own routes. It installs the `+middleware` that aren't handlers right away: the ones that match a request run before your routes, and your routes can read what they put in the context with `getContext()`. The `+middleware` that are handlers (`order: 0`, or a `path` and no `order`, such as Telefunc's `/_telefunc`) run together with Vike's pages and not-found page, after all the routes you register later, so your routes keep their precedence over them.
+Call `vike(app)` before registering your own routes. It installs the `+middleware` that aren't handlers right away, so they run before your routes, and your routes can read what they put in the context with `getContext()`. It also arranges for Vike's pages and not-found page (`universalHandler`) to run after all the routes you register later, so your routes keep their precedence over pages. `universalHandler` also runs the `+middleware` that are handlers (`order: 0`, or a `path` and no `order`, such as Telefunc's `/_telefunc`) next to the pages, so a route you register later on the same path answers instead of them.
 
 ```ts
 import { createRouter } from '@hattip/router'
@@ -53,6 +53,6 @@ apply(router, [universalHandler])
 export default router
 ```
 
-`universalHandler` is Vike's pages and not-found page; it runs no `+middleware`. The `+middleware` that are handlers run where `apply(router, getUniversalMiddlewares())` is, so a route registered after it can't override them, unlike with `vike(app)`.
+`universalHandler` is Vike's pages and not-found page; it also runs the `+middleware` that are handlers, and none of the others.
 
 This package also re-exports everything from [`@universal-middleware/hattip`](https://github.com/magne4000/universal-middleware).

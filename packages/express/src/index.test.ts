@@ -16,13 +16,14 @@ vi.mock("vike", async () => {
         },
         { name: "stub:middleware" },
       ),
-      // Stands for a +middleware that is a handler: it answers /x unless the app has a route there
-      enhance(() => new Response("handler"), { name: "stub:handler", method: "GET", path: "/x" }),
-      // Stands for a +middleware that is not a handler and runs before the app's routes
+      // Stands for a +middleware that is not a handler: getUniversalMiddlewares() returns only those, they run before the app's routes
       enhance((_request, context) => ({ ...context, early: true }), { name: "stub:early", order: -100 }),
     ],
-    // Stands for Vike's pages
-    universalHandler: enhance(async (request: Request) => new Response(`page ${new URL(request.url).pathname}`), {
+    // Stands for Vike's pages: like the real one, it first runs the +middleware that are handlers (here /x), then renders the page
+    universalHandler: enhance(async (request: Request) => {
+      const { pathname } = new URL(request.url);
+      return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
+    }, {
       name: "stub:pages",
       method: ["GET", "POST"],
       path: "/**",
@@ -101,8 +102,6 @@ describe("vike(app)", () => {
   it("answers with the app's route when a +middleware that is a handler has the same path", async () => {
     const app = express();
     vike(app);
-    // A route registered after the current tick still precedes the handler
-    await new Promise((resolve) => setTimeout(resolve));
     app.get("/x", (_req, res) => {
       res.send("app");
     });

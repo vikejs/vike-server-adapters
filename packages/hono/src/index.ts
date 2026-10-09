@@ -1,5 +1,5 @@
-import { getUniversalProp, orderSymbol, pathSymbol, pipeRoute } from "@universal-middleware/core";
-import { type App, apply, createMiddleware } from "@universal-middleware/hono";
+import { getUniversalProp, methodSymbol } from "@universal-middleware/core";
+import { type App, apply, createHandler } from "@universal-middleware/hono";
 import type { MiddlewareHandler } from "hono";
 import { getUniversalMiddlewares, universalHandler } from "vike";
 
@@ -7,12 +7,14 @@ export * from "@universal-middleware/hono";
 
 type EnhancedMiddlewareHono = Parameters<typeof apply>[1][number];
 
+// Vike's pages answer the methods its handler declares, not DELETE for example
+const pagesMethods: string[] = [getUniversalProp(universalHandler, methodSymbol) ?? []].flat();
+
 const installed = new WeakSet<App>();
 
 /**
- * Install the `+middleware` that are not handlers right away, and the ones that are handlers together with Vike's pages
- * and not-found page as `app.notFound()`, so that the routes the app registers after `vike(app)` keep their precedence
- * over them.
+ * Install every `+middleware` right away, and Vike's pages and not-found page as `app.notFound()`, so that the routes
+ * the app registers after `vike(app)` keep their precedence over pages.
  */
 export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = []) {
   if (installed.has(app)) {
@@ -21,11 +23,10 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = [
   assertNoRouteBefore(app);
   installed.add(app);
 
-  const universalMiddlewares = getUniversalMiddlewares();
-  renderHandlersOnNotFound(app, universalMiddlewares.filter(isHandler));
+  renderPagesOnNotFound(app);
   guardNotFound(app);
 
-  return apply(app, [...middlewares, ...universalMiddlewares.filter((middleware) => !isHandler(middleware))]);
+  return apply(app, [...middlewares, ...getUniversalMiddlewares()]);
 }
 
 function assertNoRouteBefore(app: App) {
@@ -46,16 +47,14 @@ function isAppRoute({ method, path }: { method: string; path: string }) {
 // The contexts that went through the guard and whose routes haven't called `c.notFound()` since
 const fallThrough = new WeakSet<object>();
 
-function renderHandlersOnNotFound(app: App, handlers: ReturnType<typeof getUniversalMiddlewares>) {
-  const pages = createMiddleware(() =>
-    pipeRoute([...handlers, universalHandler], { pipeMiddlewaresInUniversalRoute: false }),
-  )();
+function renderPagesOnNotFound(app: App) {
+  const pages = createHandler(() => universalHandler)();
   app.notFound(async (c) => {
     // Hono calls this both when the routes pass the request on and when a route calls `c.notFound()`, which is a 404,
     // including a route registered before vike(app), which ends the request before the guard
     if (!fallThrough.has(c)) return c.text("404 Not Found", 404);
-    // A request no handler or page answers, such as DELETE, is a 404
-    return ((await pages(c, async () => {})) as Response | undefined) ?? c.text("404 Not Found", 404);
+    if (!pagesMethods.includes(c.req.method)) return c.text("404 Not Found", 404);
+    return (await pages(c, async () => {})) as Response;
   });
 }
 
@@ -63,7 +62,7 @@ function renderHandlersOnNotFound(app: App, handlers: ReturnType<typeof getUnive
 function guardNotFound(app: App) {
   let notFoundReplaced = false;
   const setNotFound = app.notFound;
-  // Watches the app.notFound() calls made from now on, so it runs after renderHandlersOnNotFound()
+  // Watches the app.notFound() calls made from now on, so it runs after renderPagesOnNotFound()
   app.notFound = (handler) => {
     notFoundReplaced = true;
     return setNotFound(handler);
@@ -93,10 +92,4 @@ function guardNotFound(app: App) {
     await next();
   };
   app.use(guard);
-}
-
-// Universal Middleware core's isHandler() is not exported
-function isHandler(middleware: Parameters<typeof getUniversalProp>[0]) {
-  const order = getUniversalProp(middleware, orderSymbol);
-  return typeof order === "number" ? order === 0 : Boolean(getUniversalProp(middleware, pathSymbol));
 }
