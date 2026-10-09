@@ -86,15 +86,15 @@ describe("@vikejs/elysia", () => {
     expect(await (await send(app, "/x")).text()).toBe("app");
   });
 
-  it("applies the response step of the +middleware to the response of a route registered after vike(app), and of a page", async () => {
+  it("applies the response step of the +middleware to the response of a route registered after vike(app) that returns a plain value, and of a page", async () => {
     const app = new Elysia();
     vike(app);
-    // Elysia hands a response step what the route returned: a Response here
-    app.get("/api/me", () => new Response("api"));
+    app.get("/api/me", () => ({ api: true }));
 
-    for (const path of ["/api/me", "/about"]) {
-      expect((await send(app, path, { headers: { "x-step": "1" } })).headers.get("x-step")).toBe("applied");
-    }
+    const api = await send(app, "/api/me", { headers: { "x-step": "1" } });
+    expect(api.headers.get("x-step")).toBe("applied");
+    expect(await api.json()).toEqual({ api: true });
+    expect((await send(app, "/about", { headers: { "x-step": "1" } })).headers.get("x-step")).toBe("applied");
     expect((await send(app, "/api/me")).headers.get("x-step")).toBe(null);
   });
 

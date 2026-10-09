@@ -20,12 +20,12 @@ const app = new Elysia()
 
 vike(app)
 
-app.get('/api/me', ({ getContext }) => Response.json(getContext().user)) // sees what a +middleware added
+app.get('/api/me', ({ getContext }) => getContext().user) // sees what a +middleware added
 
 app.listen(3000)
 ```
 
-The pages are one catch-all route, so Elysia matches the routes you register after `vike(app)` first. When a `+middleware` returns a response step, a route that returns a plain value instead of a `Response` answers 500, because the step cannot post-process it: return a `Response` from such routes.
+The pages are one catch-all route, so Elysia matches the routes you register after `vike(app)` first.
 
 Calling `vike(app)` twice on the same app throws.
 
@@ -52,7 +52,7 @@ assert(!globalContext.isClientSide)
 const { middlewares } = globalContext
 apply(app, middlewares)
 
-app.get('/api/me', ({ getContext }) => Response.json(getContext().user))
+app.get('/api/me', ({ getContext }) => getContext().user)
 
 app.listen(3000)
 ```
