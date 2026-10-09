@@ -1,3 +1,4 @@
+import { enhance } from "@universal-middleware/core";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 
@@ -21,15 +22,18 @@ vi.mock("vike", async () => {
       // Stands for a +middleware that is not a handler: getUniversalMiddlewares() returns only those, they run before the app's routes
       enhance((_request, context) => ({ ...context, early: true }), { name: "stub:early", order: -100 }),
     ],
-    // Stands for Vike's pages: like the real one, it first runs the +middleware that are handlers (here /x), then renders the page
+    // Stands for Vike's pages: like the real one, it declares every method, first runs the +middleware that are handlers (here /x), answers 404 for a method the pages don't serve, then renders the page
     universalHandler: enhance(
       async (request: Request) => {
         const { pathname } = new URL(request.url);
+        if (!["GET", "HEAD", "POST", "PUT", "OPTIONS", "PATCH"].includes(request.method)) {
+          return new Response("Not Found", { status: 404 });
+        }
         return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
       },
       {
         name: "stub:pages",
-        method: ["GET", "POST"],
+        method: ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "CONNECT", "TRACE"],
         path: "/**",
         immutable: true,
       },
@@ -99,13 +103,23 @@ describe("@vikejs/fastify", () => {
     expect((await app.inject({ url: "/about" })).body).toBe("app");
   });
 
-  it("answers 404 for a method Vike's handler does not declare", async () => {
+  it("answers 404 for DELETE from Vike's handler, and the +middleware that aren't handlers run once", async () => {
+    let runs = 0;
     const app = Fastify();
-    await vike(app);
+    await vike(app, [
+      enhance(
+        (_request, context) => {
+          runs++;
+          return context;
+        },
+        { name: "count" },
+      ),
+    ]);
 
     const response = await app.inject({ method: "DELETE", url: "/about" });
     expect(response.statusCode).toBe(404);
     expect(response.body).not.toContain("page");
+    expect(runs).toBe(1);
   });
 
   // These need a Universal Middleware release with #382 (context per request), #383 (JSON body) and #384 (HEAD,

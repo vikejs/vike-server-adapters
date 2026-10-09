@@ -1,4 +1,3 @@
-import { getUniversalProp, methodSymbol } from "@universal-middleware/core";
 import { type App, apply, createHandler } from "@universal-middleware/h3";
 import { eventHandler } from "h3";
 import { getUniversalMiddlewares, universalHandler } from "vike";
@@ -6,9 +5,6 @@ import { getUniversalMiddlewares, universalHandler } from "vike";
 export * from "@universal-middleware/h3";
 
 type EnhancedMiddlewareH3 = Parameters<typeof apply>[1][number];
-
-// Vike's pages answer the methods its handler declares, not DELETE for example
-const pagesMethods: string[] = [getUniversalProp(universalHandler, methodSymbol) ?? []].flat();
 
 const installed = new WeakSet<App>();
 
@@ -28,7 +24,7 @@ export default function vike(app: App, middlewares: EnhancedMiddlewareH3[] = [])
     app.options.onRequest = onRequest;
     // Not apply(app, [universalHandler]): it would set app.options.onBeforeResponse again, dropping one the app set after vike(app)
     const pages = createHandler(() => universalHandler)();
-    app.use(eventHandler((event) => (pagesMethods.includes(event.method) ? pages(event) : undefined)));
+    app.use(eventHandler((event) => pages(event)));
     await onRequest?.(event);
   };
 

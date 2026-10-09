@@ -1,4 +1,3 @@
-import { getUniversalProp, methodSymbol } from "@universal-middleware/core";
 import { type App, apply, createHandler } from "@universal-middleware/hono";
 import type { MiddlewareHandler } from "hono";
 import { getUniversalMiddlewares, universalHandler } from "vike";
@@ -6,9 +5,6 @@ import { getUniversalMiddlewares, universalHandler } from "vike";
 export * from "@universal-middleware/hono";
 
 type EnhancedMiddlewareHono = Parameters<typeof apply>[1][number];
-
-// Vike's pages answer the methods its handler declares, not DELETE for example
-const pagesMethods: string[] = [getUniversalProp(universalHandler, methodSymbol) ?? []].flat();
 
 const installed = new WeakSet<App>();
 
@@ -53,7 +49,6 @@ function renderPagesOnNotFound(app: App) {
     // Hono calls this both when the routes pass the request on and when a route calls `c.notFound()`, which is a 404,
     // including a route registered before vike(app), which ends the request before the guard
     if (!fallThrough.has(c)) return c.text("404 Not Found", 404);
-    if (!pagesMethods.includes(c.req.method)) return c.text("404 Not Found", 404);
     return (await pages(c, async () => {})) as Response;
   });
 }

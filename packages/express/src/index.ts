@@ -1,4 +1,3 @@
-import { getUniversalProp, methodSymbol } from "@universal-middleware/core";
 import { type App, apply, connectToWeb, createHandler } from "@universal-middleware/express";
 import type { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from "express";
 import { getUniversalMiddlewares, universalHandler } from "vike";
@@ -25,9 +24,6 @@ export function toFetchHandler(app: Parameters<typeof connectToWeb>[0]): (reques
 type EnhancedMiddlewareExpress = Parameters<typeof apply>[1][number];
 
 type Layer = { route?: { path: unknown; methods: Record<string, boolean> }; handle?: { stack?: Layer[] } };
-
-// Vike's pages answer the methods its handler declares, not DELETE for example
-const pagesMethods: string[] = [getUniversalProp(universalHandler, methodSymbol) ?? []].flat();
 
 const installed = new WeakSet<App>();
 
@@ -98,7 +94,7 @@ function appendPagesOnFirstRequest(app: App) {
     app.handle = handle;
     const pages = createHandler(() => universalHandler)();
     app.use((req: ExpressRequest, res: ExpressResponse, next: NextFunction) =>
-      pagesMethods.includes(req.method) ? pages(req as Parameters<typeof pages>[0], res, next) : next(),
+      pages(req as Parameters<typeof pages>[0], res, next),
     );
     return handle.apply(this, args);
   };

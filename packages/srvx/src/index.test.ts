@@ -16,15 +16,18 @@ vi.mock("vike", async () => {
       // Stands for a +middleware that is not a handler: getUniversalMiddlewares() returns only those, they run before the app's routes
       enhance((_request, context) => ({ ...context, early: true }), { name: "stub:early", order: -100 }),
     ],
-    // Stands for Vike's pages: like the real one, it first runs the +middleware that are handlers (here /x), then renders the page
+    // Stands for Vike's pages: like the real one, it declares every method, first runs the +middleware that are handlers (here /x), answers 404 for a method the pages don't serve, then renders the page
     universalHandler: enhance(
       async (request: Request) => {
         const { pathname } = new URL(request.url);
+        if (!["GET", "HEAD", "POST", "PUT", "OPTIONS", "PATCH"].includes(request.method)) {
+          return new Response("Not Found", { status: 404 });
+        }
         return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
       },
       {
         name: "stub:pages",
-        method: ["GET", "POST"],
+        method: ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "CONNECT", "TRACE"],
         path: "/**",
         immutable: true,
       },
@@ -32,6 +35,7 @@ vi.mock("vike", async () => {
   };
 });
 
+import { getUniversalMiddlewares, universalHandler } from "vike";
 import vike, { apply } from "./index.js";
 
 describe("@vikejs/srvx", () => {
@@ -119,7 +123,7 @@ describe("@vikejs/srvx", () => {
     expect(await (await send(vike(), "/about")).text()).toBe("page /about");
   });
 
-  it("answers 404 instead of throwing for a method Vike's handler does not declare", async () => {
+  it("answers 404 for DELETE, from Vike's handler", async () => {
     const response = await send(vike(), "/about", { method: "DELETE" });
     expect(response.status).toBe(404);
   });
@@ -128,5 +132,12 @@ describe("@vikejs/srvx", () => {
     const fetch = vike([enhance(() => new Response("app"), { name: "about", method: "GET", path: "/about" })]);
 
     expect(await (await send(fetch, "/about")).text()).toBe("app");
+  });
+
+  // The README's manual example
+  it("answers 404 for DELETE on the manual path", async () => {
+    const fetch = apply([...getUniversalMiddlewares(), universalHandler]);
+
+    expect((await send(fetch, "/about", { method: "DELETE" })).status).toBe(404);
   });
 });

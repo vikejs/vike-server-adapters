@@ -16,15 +16,18 @@ vi.mock("vike", async () => {
       // Stands for a +middleware that is not a handler: getUniversalMiddlewares() returns only those, they run before the app's routes
       enhance((_request, context) => ({ ...context, early: true }), { name: "stub:early", order: -100 }),
     ],
-    // Stands for Vike's pages: like the real one, it first runs the +middleware that are handlers (here /x), then renders the page
+    // Stands for Vike's pages: like the real one, it declares every method, first runs the +middleware that are handlers (here /x), answers 404 for a method the pages don't serve, then renders the page
     universalHandler: enhance(
       async (request: Request) => {
         const { pathname } = new URL(request.url);
+        if (!["GET", "HEAD", "POST", "PUT", "OPTIONS", "PATCH"].includes(request.method)) {
+          return new Response("Not Found", { status: 404 });
+        }
         return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
       },
       {
         name: "stub:pages",
-        method: ["GET", "POST"],
+        method: ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "CONNECT", "TRACE"],
         path: "/**",
         immutable: true,
       },
@@ -170,7 +173,7 @@ describe("@vikejs/h3", () => {
     expect(app.stack.length).toBe(after);
   });
 
-  it("does not render a page for a method Vike's handler does not declare", async () => {
+  it("answers 404 for DELETE, from Vike's handler", async () => {
     const app = createApp();
     vike(app);
 
