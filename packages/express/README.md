@@ -58,7 +58,7 @@ apply(app, [universalHandler])
 app.listen(3000)
 ```
 
-`vike(app)` looks the `+middleware` up on every request, so adding, removing or editing one in `vike dev` needs no restart. The list you apply yourself is read once, when you call `getUniversalMiddlewares()`: restart your server to pick up a change. Being a plain list, it can be filtered and re-ordered; your server stops at the first `+middleware` that answers, so one that must see every response needs an `order` before it.
+`vike(app)` looks the `+middleware` up on every request. To filter or re-order the list you apply yourself, see [`+middleware`](https://vike.dev/renderPage#middleware).
 
 `universalHandler` is Vike's pages and not-found page; it also runs the `+middleware` that are handlers, and none of the others.
 
