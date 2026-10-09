@@ -1,5 +1,6 @@
 import { getUniversalProp, orderSymbol, pathSymbol, pipeRoute } from "@universal-middleware/core";
 import { type App, apply, createMiddleware } from "@universal-middleware/hono";
+import type { MiddlewareHandler } from "hono";
 import { getUniversalMiddlewares, universalHandler } from "vike";
 
 export * from "@universal-middleware/hono";
@@ -67,7 +68,7 @@ function guardNotFound(app: App) {
     notFoundReplaced = true;
     return setNotFound(handler);
   };
-  const guard: Parameters<typeof app.use>[0] = async (c, next) => {
+  const guard: MiddlewareHandler = async (c, next) => {
     // Throws at the first request, where the app is complete: calling app.notFound() later would hide the pages
     if (notFoundReplaced) {
       throw new Error(

@@ -1,5 +1,5 @@
 import { enhance } from "@universal-middleware/core";
-import { Hono } from "hono";
+import { type Handler, Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { describe, expect, it, vi } from "vitest";
@@ -156,7 +156,9 @@ describe("@vikejs/hono", () => {
     "get",
   ] as const)("answers Hono's own not-found when a wildcard route registered before vike(app) calls c.notFound() with %s", async (method) => {
     const app = new Hono();
-    app[method]("/static/*", (c) => c.notFound());
+    const notFound: Handler = (c) => c.notFound();
+    if (method === "use") app.use("/static/*", notFound);
+    else app.get("/static/*", notFound);
     vike(app);
 
     const response = await app.request("/static/missing");
