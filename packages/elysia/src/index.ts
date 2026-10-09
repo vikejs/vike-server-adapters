@@ -8,7 +8,7 @@ type EnhancedMiddlewareElysia = Parameters<typeof apply>[1][number];
 const installed = new WeakSet<App>();
 
 /**
- * Install every `+middleware` right away, and Vike's pages and not-found page as one catch-all route: Elysia matches the
+ * Install the `+middleware` that aren't handlers right away, and the handlers with Vike's pages and not-found page as one catch-all route: Elysia matches the
  * routes the app registers after `vike(app)` first.
  */
 export default function vike(app: App, middlewares: EnhancedMiddlewareElysia[] = []) {

@@ -15,7 +15,7 @@ const otherMethods = enhance(() => new Response(null, { status: 404 }), {
 type EnhancedMiddlewareSrvx = Parameters<typeof apply>[0][number];
 
 /**
- * The `fetch` handler of the server: every `+middleware`, then the routes in `middlewares`, then Vike's pages and
+ * The `fetch` handler of the server: the `+middleware` that aren't handlers, then the routes in `middlewares`, then the handlers with Vike's pages and
  * not-found page.
  */
 export default function vike(middlewares: EnhancedMiddlewareSrvx[] = []) {

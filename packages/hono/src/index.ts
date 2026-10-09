@@ -13,7 +13,7 @@ const pagesMethods: string[] = [getUniversalProp(universalHandler, methodSymbol)
 const installed = new WeakSet<App>();
 
 /**
- * Install every `+middleware` right away, and Vike's pages and not-found page as `app.notFound()`, so that the routes
+ * Install the `+middleware` that aren't handlers right away, and the handlers with Vike's pages and not-found page as `app.notFound()`, so that the routes
  * the app registers after `vike(app)` keep their precedence over pages.
  */
 export default function vike(app: App, middlewares: EnhancedMiddlewareHono[] = []) {

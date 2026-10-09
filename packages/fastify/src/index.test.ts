@@ -22,15 +22,18 @@ vi.mock("vike", async () => {
       enhance((_request, context) => ({ ...context, early: true }), { name: "stub:early", order: -100 }),
     ],
     // Stands for Vike's pages: like the real one, it first runs the +middleware that are handlers (here /x), then renders the page
-    universalHandler: enhance(async (request: Request) => {
-      const { pathname } = new URL(request.url);
-      return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
-    }, {
-      name: "stub:pages",
-      method: ["GET", "POST"],
-      path: "/**",
-      immutable: true,
-    }),
+    universalHandler: enhance(
+      async (request: Request) => {
+        const { pathname } = new URL(request.url);
+        return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
+      },
+      {
+        name: "stub:pages",
+        method: ["GET", "POST"],
+        path: "/**",
+        immutable: true,
+      },
+    ),
   };
 });
 

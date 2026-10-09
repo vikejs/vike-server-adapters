@@ -8,7 +8,7 @@ type EnhancedMiddlewareHattip = Parameters<typeof apply>[1][number];
 const installed = new WeakSet<App>();
 
 /**
- * Install every `+middleware` right away, and Vike's pages and not-found page when the router builds its handler, so
+ * Install the `+middleware` that aren't handlers right away, and the handlers with Vike's pages and not-found page when the router builds its handler, so
  * that the routes the app registers after `vike(app)` keep their precedence over pages.
  */
 export default function vike(app: App, middlewares: EnhancedMiddlewareHattip[] = []) {
