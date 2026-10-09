@@ -27,8 +27,6 @@ app.listen(3000)
 
 The pages are one catch-all route, so Elysia matches the routes you register after `vike(app)` first. When a `+middleware` returns a response step, a route that returns a plain value instead of a `Response` answers 500, because the step cannot post-process it: return a `Response` from such routes.
 
-A JSON body sent to a route registered after `vike(app)` needs a [Universal Middleware](https://github.com/magne4000/universal-middleware) release with [#383](https://github.com/magne4000/universal-middleware/pull/383): without it the route gets an empty body.
-
 Calling `vike(app)` twice on the same app throws.
 
 You can pass additional [universal middlewares](https://github.com/magne4000/universal-middleware) as the second argument:

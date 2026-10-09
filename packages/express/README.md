@@ -29,8 +29,6 @@ The pages are appended when the first request arrives. A route registered after 
 
 `vike(app)` throws if a route was registered before it, because the `+middleware` would not run for that route: any route other than `OPTIONS` and wildcard paths, and `app.all()` counts. `express.static()`, `cors()`, loggers and `app.options('/{*any}', cors())` are fine. To answer a route before the `+middleware` on purpose, use the manual path.
 
-A body parser registered before `vike(app)`, such as `app.use(express.json())`, needs a [Universal Middleware](https://github.com/magne4000/universal-middleware) release with [#383](https://github.com/magne4000/universal-middleware/pull/383): without it every request whose body the parser reads (a JSON body for `express.json()`) answers 500. A body parser on a single route registered after `vike(app)` works with the current release.
-
 Calling `vike(app)` twice on the same app throws.
 
 You can pass additional [universal middlewares](https://github.com/magne4000/universal-middleware) as the second argument:
