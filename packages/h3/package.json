@@ -21,8 +21,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@universal-middleware/core": "^0.6.0",
-    "@universal-middleware/h3": "^0.5.1"
+    "@universal-middleware/core": "^0.6.1",
+    "@universal-middleware/h3": "^0.5.2"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",

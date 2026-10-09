@@ -27,7 +27,7 @@ app.use(router)
 export default app
 ```
 
-The pages are appended when the first request arrives. A route registered after the first request sits behind the pages, so register every route before serving requests. A catch-all handler registered after `vike(app)` hides the pages. When a `+middleware` returns a response step, a route that returns a plain object instead of a string or a `Response` answers 500, because the step cannot post-process it: return a `Response` from such routes.
+The pages are appended when the first request arrives. A route registered after the first request sits behind the pages, so register every route before serving requests. A catch-all handler registered after `vike(app)` hides the pages.
 
 Calling `vike(app)` twice on the same app throws.
 
