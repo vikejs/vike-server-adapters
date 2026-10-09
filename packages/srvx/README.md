@@ -35,10 +35,11 @@ serve({ fetch: vike([me]) })
 
 ```ts
 import { apply } from '@vikejs/srvx'
+import assert from 'node:assert'
 import { getGlobalContext } from 'vike/server'
 
 const globalContext = await getGlobalContext()
-if (globalContext.isClientSide) throw new Error('Server only')
+assert(!globalContext.isClientSide)
 const { middlewares } = globalContext
 serve({ fetch: apply(middlewares) })
 ```

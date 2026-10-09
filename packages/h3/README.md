@@ -44,12 +44,13 @@ For more control, do by hand what `vike(app)` does: install the `+middleware` fi
 ```ts
 import { createApp } from 'h3'
 import { apply } from '@vikejs/h3'
+import assert from 'node:assert'
 import { getGlobalContext } from 'vike/server'
 
 const app = createApp()
 
 const globalContext = await getGlobalContext()
-if (globalContext.isClientSide) throw new Error('Server only')
+assert(!globalContext.isClientSide)
 const { middlewares } = globalContext
 apply(
   app,

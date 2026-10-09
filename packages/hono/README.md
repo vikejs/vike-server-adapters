@@ -44,13 +44,14 @@ For more control, do by hand what `vike(app)` does: install the `+middleware` fi
 ```ts
 import { Hono } from 'hono'
 import { apply, getContext } from '@vikejs/hono'
+import assert from 'node:assert'
 import { getGlobalContext } from 'vike/server'
 
 const app = new Hono()
 
 app.get('/health', (c) => c.text('ok')) // answered before the +middleware
 const globalContext = await getGlobalContext()
-if (globalContext.isClientSide) throw new Error('Server only')
+assert(!globalContext.isClientSide)
 const { middlewares } = globalContext
 apply(
   app,

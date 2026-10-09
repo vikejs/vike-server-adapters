@@ -44,12 +44,13 @@ For more control, do by hand what `vike(app)` does: install the `+middleware` fi
 ```ts
 import Fastify from 'fastify'
 import { apply, getContext } from '@vikejs/fastify'
+import assert from 'node:assert'
 import { getGlobalContext } from 'vike/server'
 
 const app = Fastify()
 
 const globalContext = await getGlobalContext()
-if (globalContext.isClientSide) throw new Error('Server only')
+assert(!globalContext.isClientSide)
 const { middlewares } = globalContext
 await apply(app, middlewares)
 
