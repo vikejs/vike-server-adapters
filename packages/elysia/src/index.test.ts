@@ -20,10 +20,11 @@ vi.mock("vike/__internal", async () => {
       },
       { name: "stub:before" },
     ),
-    // Stands for the +middleware that are handlers (here /x), then Vike's pages: like the real one, it declares every method
+    // Stands for the +middleware that are handlers (here /x), then Vike's pages: like the real one, it declares every method and answers nothing for a method the pages don't declare
     middlewaresAfterRoutes: enhance(
       async (request: Request) => {
         const { pathname } = new URL(request.url);
+        if (!["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"].includes(request.method)) return;
         return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
       },
       {

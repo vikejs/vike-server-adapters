@@ -49,7 +49,7 @@ function renderPagesOnNotFound(app: App) {
     // Hono calls this both when the routes pass the request on and when a route calls `c.notFound()`, which is a 404,
     // including a route registered before vike(app), which ends the request before the guard
     if (!fallThrough.has(c)) return c.text("404 Not Found", 404);
-    return (await pages(c, async () => {})) as Response;
+    return ((await pages(c, async () => {})) as Response | undefined) ?? c.text("404 Not Found", 404);
   });
 }
 

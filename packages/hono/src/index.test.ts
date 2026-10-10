@@ -22,10 +22,11 @@ vi.mock("vike/__internal", async () => {
       },
       { name: "stub:before" },
     ),
-    // Stands for the +middleware that are handlers (here /x), then Vike's pages: like the real one, it declares every method
+    // Stands for the +middleware that are handlers (here /x), then Vike's pages: like the real one, it declares every method and answers nothing for a method the pages don't declare
     middlewaresAfterRoutes: enhance(
       async (request: Request) => {
         const { pathname } = new URL(request.url);
+        if (!["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"].includes(request.method)) return;
         return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
       },
       {
@@ -228,6 +229,15 @@ describe("@vikejs/hono", () => {
     app.get("/api/me", (c) => c.text("api"));
 
     expect((await app.request("/api/me", { method: "HEAD" })).status).toBe(200);
+  });
+
+  it("answers Hono's 404 for a method neither the routes nor Vike's handler answer", async () => {
+    const app = new Hono();
+    vike(app);
+
+    const response = await app.request("/about", { method: "PROPFIND" });
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("404 Not Found");
   });
 
   it("passes DELETE on to Vike's handler", async () => {
