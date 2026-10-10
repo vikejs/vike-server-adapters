@@ -57,7 +57,7 @@ app.get('/api/me', ({ getContext }) => getContext().user)
 app.listen(3000)
 ```
 
-`vike(app)` looks the `+middleware` up on every request. To filter or re-order the list you apply yourself, see [`+middleware`](https://vike.dev/renderPage#middleware).
+`vike(app)` looks the `+middleware` up on every request. To filter or re-order the list you apply yourself, see [`+middleware`](https://vike.dev/middleware).
 
 On Elysia the manual path is one call: the pages are a catch-all route, so a separate call for the `+middleware` would hide them. Elysia runs a middleware as a hook before every route, so applied like this the `+middleware` that are handlers run before your routes too, and a route can't override one; `vike(app)` doesn't have this limit.
 
