@@ -4,6 +4,9 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { describe, expect, it, vi } from "vitest";
 
+// A test sets `answersNothing` to have Vike's handler answer nothing
+const stub = vi.hoisted(() => ({ answersNothing: false }));
+
 // Stands for the two halves of Vike's +middleware that vike(app) applies: the ones that aren't handlers, looked up upon each request, and the handlers with the pages. Here: the user's
 // +middleware puts the `x-user` header in the context, after `x-delay` milliseconds, and with an `x-step` header it also adds a response step that sets `x-step` on the response
 vi.mock("vike/__internal", async () => {
@@ -22,11 +25,14 @@ vi.mock("vike/__internal", async () => {
       },
       { name: "stub:before" },
     ),
-    // Stands for the +middleware that are handlers (here /x), then Vike's pages: like the real one, it declares every method and answers nothing for a method the pages don't declare
+    // Stands for the +middleware that are handlers (here /x), then Vike's pages: like the real one, it declares every method and answers 404 for a method the pages don't declare
     middlewaresAfterRoutes: enhance(
       async (request: Request) => {
+        if (stub.answersNothing) return;
         const { pathname } = new URL(request.url);
-        if (!["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"].includes(request.method)) return;
+        if (!["GET", "POST", "PUT", "PATCH", "HEAD", "OPTIONS"].includes(request.method)) {
+          return new Response("Not Found", { status: 404 });
+        }
         return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
       },
       {
@@ -231,22 +237,27 @@ describe("@vikejs/hono", () => {
     expect((await app.request("/api/me", { method: "HEAD" })).status).toBe(200);
   });
 
-  it("answers Hono's 404 for a method neither the routes nor Vike's handler answer", async () => {
+  it("answers Hono's 404 when neither the routes nor Vike's handler answer", async () => {
     const app = new Hono();
     vike(app);
 
-    const response = await app.request("/about", { method: "PROPFIND" });
-    expect(response.status).toBe(404);
-    expect(await response.text()).toBe("404 Not Found");
+    stub.answersNothing = true;
+    try {
+      const response = await app.request("/about");
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe("404 Not Found");
+    } finally {
+      stub.answersNothing = false;
+    }
   });
 
-  it("passes DELETE on to Vike's handler", async () => {
+  it("answers Vike's 404 for DELETE, which Vike's pages don't declare", async () => {
     const app = new Hono();
     vike(app);
 
     const response = await app.request("/about", { method: "DELETE" });
-    expect(response.status).toBe(200);
-    expect(await response.text()).toBe("page /about");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("Not Found");
   });
 
   it("places the extra middlewares before the +middleware", async () => {

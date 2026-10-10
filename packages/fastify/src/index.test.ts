@@ -23,11 +23,13 @@ vi.mock("vike/__internal", async () => {
       },
       { name: "stub:before" },
     ),
-    // Stands for the +middleware that are handlers (here /x), then Vike's pages: like the real one, it declares every method and answers nothing for a method the pages don't declare
+    // Stands for the +middleware that are handlers (here /x), then Vike's pages: like the real one, it declares every method and answers 404 for a method the pages don't declare
     middlewaresAfterRoutes: enhance(
       async (request: Request) => {
         const { pathname } = new URL(request.url);
-        if (!["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"].includes(request.method)) return;
+        if (!["GET", "POST", "PUT", "PATCH", "HEAD", "OPTIONS"].includes(request.method)) {
+          return new Response("Not Found", { status: 404 });
+        }
         return new Response(request.method === "GET" && pathname === "/x" ? "handler" : `page ${pathname}`);
       },
       {
@@ -105,7 +107,7 @@ describe("@vikejs/fastify", () => {
     expect((await app.inject({ url: "/about" })).body).toBe("app");
   });
 
-  it("passes DELETE on to Vike's handler, and the +middleware that aren't handlers run once", async () => {
+  it("answers Vike's 404 for DELETE, which Vike's pages don't declare, and the +middleware that aren't handlers run once", async () => {
     let runs = 0;
     const app = Fastify();
     await vike(app, [
@@ -119,8 +121,8 @@ describe("@vikejs/fastify", () => {
     ]);
 
     const response = await app.inject({ method: "DELETE", url: "/about" });
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toBe("page /about");
+    expect(response.statusCode).toBe(404);
+    expect(response.body).toBe("Not Found");
     expect(runs).toBe(1);
   });
 
