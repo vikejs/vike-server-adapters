@@ -34,7 +34,7 @@
   },
   "peerDependencies": {
     "hono": "^4.13.13",
-    "vike": "^0.4.255"
+    "vike": "^0.4.268"
   },
   "sideEffects": false,
   "keywords": [
