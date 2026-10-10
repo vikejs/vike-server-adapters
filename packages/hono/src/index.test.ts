@@ -12,15 +12,13 @@ vi.mock("vike/__internal", async () => {
     middlewaresBeforeRoutes: enhance(
       async (request: Request, context: Universal.Context) => {
         await new Promise((resolve) => setTimeout(resolve, Number(request.headers.get("x-delay") ?? 0)));
-        if (request.headers.has("x-step")) {
-          // A middleware returns a context or a response step, not both: with a response step, it mutates the context
-          Object.assign(context, { user: request.headers.get("x-user") });
-          return (response: Response) => {
-            response.headers.set("x-step", "applied");
-            return response;
-          };
-        }
-        return { ...context, user: request.headers.get("x-user") };
+        // Like the real one, it adds to the context and returns nothing or a response step
+        Object.assign(context, { user: request.headers.get("x-user") });
+        if (!request.headers.has("x-step")) return;
+        return (response: Response) => {
+          response.headers.set("x-step", "applied");
+          return response;
+        };
       },
       { name: "stub:before" },
     ),

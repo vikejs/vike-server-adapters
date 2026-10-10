@@ -44,7 +44,7 @@ const { middlewares } = globalContext
 serve({ fetch: apply(middlewares) })
 ```
 
-`vike(app)` looks the `+middleware` up on every request. To filter or re-order the list you apply yourself, see [`+middleware`](https://vike.dev/middleware).
+`vike()` looks the `+middleware` up on every request. To filter or re-order the list you apply yourself, see [`+middleware`](https://vike.dev/middleware).
 
 Each element of `middlewares` has an `isHandler` property. The last one is Vike's pages and not-found page, after the `+middleware` that are handlers.
 
